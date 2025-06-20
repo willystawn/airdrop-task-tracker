@@ -74,12 +74,12 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin, appError, clearAp
               <input
                 id="userId"
                 name="userId"
-                type="text"
+                type="password"
                 autoComplete="off"
                 required
                 value={userIdInput}
                 onChange={(e) => setUserIdInput(e.target.value)}
-                placeholder="e.g., a1b2c3d4-e5f6-7890-1234-567890abcdef"
+                placeholder="Enter your User ID (UUID)"
                 className="mt-1 block w-full bg-base-100 border border-base-300 rounded-md shadow-sm py-2.5 px-3 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
               />
             </div>

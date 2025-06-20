@@ -233,7 +233,7 @@ export const FeatureManagementPage: React.FC<FeatureManagementPageProps> = ({
             </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-0">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
           {filteredAndSortedTasks.map(task => (
             <div key={task.id} className="relative group/taskitem">
                 <TaskItem task={task} onToggleComplete={onToggleComplete} globalTagDefinitions={globalTagDefinitions} />
