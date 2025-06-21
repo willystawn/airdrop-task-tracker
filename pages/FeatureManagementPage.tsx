@@ -141,11 +141,7 @@ export const FeatureManagementPage: React.FC<FeatureManagementPageProps> = ({
       <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
         <h1 className="text-2xl sm:text-3xl font-bold text-primary">Sumber Rejeki</h1>
         <div className="flex items-center gap-3">
-          {currentUser && (
-            <div className="text-sm text-base-content-secondary hidden md:block">
-              Welcome, <span className="font-semibold text-base-content">{currentUser.username}</span>
-            </div>
-          )}
+          {/* Welcome message removed */}
           <button
             onClick={onLogout}
             title="Logout"

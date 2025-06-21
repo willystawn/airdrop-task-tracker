@@ -1,11 +1,12 @@
-
 import React from 'react';
-import { ManagedTask, TaskResetCategory, SubTask, GlobalTag } from '../../types';
+import { ManagedTask, TaskResetCategory, GlobalTag } from '../../types';
 import { Accordion } from '../shared/Accordion';
 import { UrlRenderer } from '../shared/UrlRenderer';
 import { Tag } from '../shared/Tag';
 import { CheckCircleIcon, CircleIcon, ClockIcon, CalendarDaysIcon, ArrowPathIcon, InformationCircleIcon } from '../shared/icons/HeroIcons';
-import { formatTimestamp, formatTimeDifference, parseSupabaseDate } from '../../services/utils';
+import { formatTimestamp, parseSupabaseDate } from '../../services/utils';
+import { useCountdown } from '../../hooks/useCountdown';
+import { SubTaskListItem } from './SubTaskListItem'; // Import the new SubTaskListItem
 
 interface TaskItemProps {
   task: ManagedTask;
@@ -13,17 +14,18 @@ interface TaskItemProps {
   globalTagDefinitions: GlobalTag[];
 }
 
-const DEFAULT_TAG_COLOR_ITEM = "bg-neutral text-base-content"; // Fallback for tags in item display
+const DEFAULT_TAG_COLOR_ITEM = "bg-neutral text-base-content"; 
 
-const getCategoryIcon = (category: TaskResetCategory) => {
+const getCategoryIcon = (category: TaskResetCategory | "", className?: string) => {
+  const baseClassName = className || "w-4 h-4 mr-1.5";
   switch (category) {
     case TaskResetCategory.DAILY:
-      return <CalendarDaysIcon className="w-4 h-4 mr-1.5 text-blue-400" />;
+      return <CalendarDaysIcon className={`${baseClassName} text-blue-400`} />;
     case TaskResetCategory.COUNTDOWN_24H:
-      return <ClockIcon className="w-4 h-4 mr-1.5 text-orange-400" />;
+      return <ClockIcon className={`${baseClassName} text-orange-400`} />;
     case TaskResetCategory.WEEKLY_MONDAY:
     case TaskResetCategory.SPECIFIC_DAY:
-      return <CalendarDaysIcon className="w-4 h-4 mr-1.5 text-purple-400" />;
+      return <CalendarDaysIcon className={`${baseClassName} text-purple-400`} />;
     default:
       return null;
   }
@@ -31,7 +33,7 @@ const getCategoryIcon = (category: TaskResetCategory) => {
 
 export const TaskItem: React.FC<TaskItemProps> = ({ task, onToggleComplete, globalTagDefinitions }) => {
   const nextResetNum = parseSupabaseDate(task.next_reset_timestamp);
-  const timeToReset = task.is_completed && nextResetNum ? formatTimeDifference(nextResetNum) : null;
+  const timeToReset = useCountdown(task.is_completed ? nextResetNum : undefined);
   
   const hasSubTasks = task.sub_tasks && task.sub_tasks.length > 0;
 
@@ -68,12 +70,17 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task, onToggleComplete, glob
           )}
         </div>
       </div>
-       {task.is_completed && timeToReset && (
+       {task.is_completed && timeToReset && timeToReset !== 'N/A' && timeToReset !== "Saatnya / Terlewat" && (
         <div className="text-xs text-accent flex items-center ml-auto flex-shrink-0 whitespace-nowrap hidden sm:flex">
           <ArrowPathIcon className="w-3.5 h-3.5 mr-1"/> {timeToReset}
         </div>
       )}
-       {!task.is_completed && nextResetNum && Date.now() > nextResetNum && (
+       {(task.is_completed && timeToReset === "Saatnya / Terlewat") && (
+         <div className="text-xs text-info flex items-center ml-auto flex-shrink-0 whitespace-nowrap hidden sm:flex">
+            <InformationCircleIcon className="w-4 h-4 mr-1"/> {timeToReset}
+        </div>
+       )}
+       {(!task.is_completed && nextResetNum && Date.now() > nextResetNum) && (
          <div className="text-xs text-error flex items-center ml-auto flex-shrink-0 whitespace-nowrap hidden sm:flex">
             <InformationCircleIcon className="w-4 h-4 mr-1"/> Terlewat
         </div>
@@ -95,20 +102,14 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task, onToggleComplete, glob
           {hasSubTasks && (
             <div className="pt-2 mt-2 border-t border-base-300">
               <h4 className="text-xs font-semibold uppercase text-base-content-secondary mb-2">Sub-Tasks:</h4>
-              <ul className="space-y-1.5">
+              <ul className="space-y-2.5">
                 {task.sub_tasks!.map((subTask, index) => (
-                  <li key={index} className="flex items-center gap-2 text-sm">
-                    <button
-                      onClick={() => onToggleComplete(task.id, subTask.title)}
-                      className="p-0.5 flex-shrink-0 focus:outline-none rounded-full hover:bg-base-300/50"
-                      aria-label={subTask.isCompleted ? "Mark sub-task as incomplete" : "Mark sub-task as complete"}
-                    >
-                      {subTask.isCompleted ? <CheckCircleIcon className="w-5 h-5 text-success/80" /> : <CircleIcon className="w-5 h-5 text-base-content-secondary/70" />}
-                    </button>
-                    <span className={subTask.isCompleted ? 'line-through text-base-content-secondary/80' : 'text-base-content-secondary'}>
-                      <UrlRenderer text={subTask.title} />
-                    </span>
-                  </li>
+                  <SubTaskListItem
+                    key={`${task.id}-sub-${index}-${subTask.title}`} // More stable key
+                    subTask={subTask}
+                    taskId={task.id}
+                    onToggleComplete={onToggleComplete}
+                  />
                 ))}
               </ul>
             </div>

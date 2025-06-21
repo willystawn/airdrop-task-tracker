@@ -3,6 +3,7 @@ import { ManagedTask, TaskResetCategory, WeekDays, FormComponentProps, SubTask, 
 import { Modal } from '../shared/Modal';
 import { Tag } from '../shared/Tag';
 import { PlusCircleIcon, TrashIcon, PencilSquareIcon, CheckCircleIcon as SaveIcon, XMarkIcon as CancelIcon } from '../shared/icons/HeroIcons'; 
+import { calculateNextResetTimestamp, toSupabaseDate, parseSupabaseDate } from '../../services/utils';
 
 const initialFormStateOmit: Omit<ManagedTask, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'next_reset_timestamp' | 'last_completion_timestamp'> = {
   title: '',
@@ -22,13 +23,17 @@ export const TaskForm: React.FC<FormComponentProps<ManagedTask> & { globalTagDef
     onClose, 
     onSave, 
     existingData: existingTask, 
-    // currentUser prop removed
     globalTagDefinitions
 }) => {
   const [taskData, setTaskData] = useState(initialFormStateOmit);
   const [currentTagInput, setCurrentTagInput] = useState('');
   const [currentSubTaskTitle, setCurrentSubTaskTitle] = useState('');
-  const [editingSubTask, setEditingSubTask] = useState<{ index: number; title: string } | null>(null);
+  const [currentSubTaskCategory, setCurrentSubTaskCategory] = useState<TaskResetCategory | "">("");
+  const [editingSubTask, setEditingSubTask] = useState<{ 
+    index: number; 
+    title: string; 
+    category: TaskResetCategory | "";
+  } | null>(null);
 
   useEffect(() => {
     if (existingTask && isOpen) { 
@@ -40,13 +45,19 @@ export const TaskForm: React.FC<FormComponentProps<ManagedTask> & { globalTagDef
         category: existingTask.category,
         specific_reset_days: existingTask.specific_reset_days || [],
         tags: existingTask.tags || [],
-        sub_tasks: existingTask.sub_tasks || [],
+        sub_tasks: (existingTask.sub_tasks || []).map(st => ({ 
+            ...st, 
+            category: st.category || "",
+            last_completion_timestamp: st.last_completion_timestamp,
+            next_reset_timestamp: st.next_reset_timestamp,
+        })),
       });
     } else if (!existingTask && isOpen) { 
       setTaskData(initialFormStateOmit);
     }
     setCurrentTagInput('');
     setCurrentSubTaskTitle('');
+    setCurrentSubTaskCategory("");
     setEditingSubTask(null); 
   }, [existingTask, isOpen]);
 
@@ -80,12 +91,21 @@ export const TaskForm: React.FC<FormComponentProps<ManagedTask> & { globalTagDef
   const handleAddSubTask = () => {
     const title = currentSubTaskTitle.trim();
     if (title) {
-        const newSubTask: SubTask = { title, isCompleted: false };
+        const newSubTask: SubTask = { 
+            title, 
+            isCompleted: false, 
+            category: currentSubTaskCategory,
+            last_completion_timestamp: null,
+            next_reset_timestamp: currentSubTaskCategory 
+                ? toSupabaseDate(calculateNextResetTimestamp(currentSubTaskCategory, undefined, Date.now(), false)) 
+                : null,
+        };
         setTaskData(prev => ({
             ...prev,
             sub_tasks: [...(prev.sub_tasks || []), newSubTask]
         }));
         setCurrentSubTaskTitle('');
+        setCurrentSubTaskCategory("");
     }
   };
 
@@ -100,16 +120,50 @@ export const TaskForm: React.FC<FormComponentProps<ManagedTask> & { globalTagDef
   };
   
   const handleEditSubTask = (index: number) => {
-    setEditingSubTask({ index, title: (taskData.sub_tasks || [])[index].title });
+    const subTask = (taskData.sub_tasks || [])[index];
+    setEditingSubTask({ 
+        index, 
+        title: subTask.title, 
+        category: subTask.category || ""
+    });
   };
 
   const handleSaveEditedSubTask = () => {
     if (editingSubTask && editingSubTask.title.trim()) {
       const updatedSubTasks = [...(taskData.sub_tasks || [])];
-      updatedSubTasks[editingSubTask.index] = { 
-        ...updatedSubTasks[editingSubTask.index], 
-        title: editingSubTask.title.trim() 
-      };
+      const subTaskToUpdate = updatedSubTasks[editingSubTask.index];
+
+      subTaskToUpdate.title = editingSubTask.title.trim();
+      const oldCategory = subTaskToUpdate.category;
+      subTaskToUpdate.category = editingSubTask.category;
+
+      if (oldCategory !== editingSubTask.category || (editingSubTask.category && !subTaskToUpdate.next_reset_timestamp)) {
+          if (editingSubTask.category) {
+              let baseTimestampForCalc: number;
+              if (subTaskToUpdate.isCompleted && subTaskToUpdate.last_completion_timestamp) {
+                  const parsedTs = parseSupabaseDate(subTaskToUpdate.last_completion_timestamp);
+                  if (parsedTs !== undefined) {
+                      baseTimestampForCalc = parsedTs;
+                  } else {
+                      console.warn(`Invalid last_completion_timestamp for subtask during edit: ${subTaskToUpdate.title}. Defaulting to now.`);
+                      baseTimestampForCalc = Date.now();
+                  }
+              } else {
+                  baseTimestampForCalc = Date.now();
+              }
+              
+              subTaskToUpdate.next_reset_timestamp = toSupabaseDate(calculateNextResetTimestamp(
+                  editingSubTask.category, 
+                  undefined, 
+                  baseTimestampForCalc, 
+                  subTaskToUpdate.isCompleted
+              ));
+          } else {
+              subTaskToUpdate.next_reset_timestamp = null;
+              subTaskToUpdate.last_completion_timestamp = null;
+          }
+      }
+      
       setTaskData(prev => ({ ...prev, sub_tasks: updatedSubTasks }));
       setEditingSubTask(null);
     } else if (editingSubTask) {
@@ -123,7 +177,7 @@ export const TaskForm: React.FC<FormComponentProps<ManagedTask> & { globalTagDef
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!taskData.title) { // currentUser?.id check removed, handled in App.tsx
+    if (!taskData.title) {
         alert("Title is required.");
         return;
     }
@@ -131,16 +185,20 @@ export const TaskForm: React.FC<FormComponentProps<ManagedTask> & { globalTagDef
         alert("Please save or cancel the sub-task you are currently editing before saving the main task.");
         return;
     }
-    // user_id will be set in App.tsx's handleAddTask/handleUpdateTask
     const completeTaskData: ManagedTask = {
       id: existingTask?.id || '', 
-      user_id: existingTask?.user_id || '', // This will be overridden in App.tsx if new
+      user_id: existingTask?.user_id || '', 
       created_at: existingTask?.created_at || '', 
       updated_at: '', 
       next_reset_timestamp: existingTask?.next_reset_timestamp, 
       last_completion_timestamp: existingTask?.last_completion_timestamp, 
       ...taskData, 
-      sub_tasks: taskData.sub_tasks || [], 
+      sub_tasks: (taskData.sub_tasks || []).map(st => ({
+          ...st, 
+          category: st.category || undefined, 
+          last_completion_timestamp: st.last_completion_timestamp,
+          next_reset_timestamp: st.next_reset_timestamp,
+      })),
     };
     try {
         await onSave(completeTaskData); 
@@ -166,7 +224,7 @@ export const TaskForm: React.FC<FormComponentProps<ManagedTask> & { globalTagDef
         </div>
         <div>
           <label htmlFor="description" className="block text-sm font-medium text-base-content-secondary">Description (URLs &amp; [text](url) will be clickable)</label>
-          <textarea name="description" id="description" value={taskData.description} onChange={handleChange} rows={3}
+          <textarea name="description" id="description" value={taskData.description} onChange={handleChange} rows={5}
                     className="mt-1 block w-full bg-base-200 border border-base-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm" />
         </div>
         <div>
@@ -242,33 +300,46 @@ export const TaskForm: React.FC<FormComponentProps<ManagedTask> & { globalTagDef
         </div>
 
         <div className="pt-4 border-t border-base-300">
-            <h3 className="text-md font-semibold text-base-content mb-2">Sub-tasks (titles can use [text](url) format)</h3>
-            <div className="space-y-2">
+            <h3 className="text-md font-semibold text-base-content mb-2">Sub-tasks (titles/descriptions can use [text](url) format)</h3>
+            <div className="space-y-3">
                 {(taskData.sub_tasks || []).map((subTask, index) => (
-                    <div key={index} className={`flex items-center justify-between p-2 rounded-md border ${editingSubTask?.index === index ? 'bg-base-300/50 border-primary' : 'bg-base-100/70 border-base-300/70'}`}>
+                    <div key={index} className={`p-3 rounded-md border ${editingSubTask?.index === index ? 'bg-base-300/50 border-primary' : 'bg-base-100/70 border-base-300/70'}`}>
                         {editingSubTask?.index === index ? (
-                            <>
-                                <input
-                                    type="text"
+                            <div className="space-y-2">
+                                <textarea
                                     value={editingSubTask.title}
-                                    onChange={(e) => setEditingSubTask({ ...editingSubTask, title: e.target.value })}
-                                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleSaveEditedSubTask(); } else if (e.key === 'Escape') { handleCancelEditSubTask();}}}
-                                    className="flex-grow bg-base-100 border border-primary rounded-md shadow-sm py-1 px-2 focus:outline-none focus:ring-1 focus:ring-primary sm:text-sm mr-2"
+                                    onChange={(e) => setEditingSubTask({ ...editingSubTask!, title: e.target.value })}
+                                    onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSaveEditedSubTask(); } else if (e.key === 'Escape') { handleCancelEditSubTask();}}}
+                                    className="block w-full bg-base-100 border border-primary rounded-md shadow-sm py-1.5 px-2 focus:outline-none focus:ring-1 focus:ring-primary sm:text-sm"
+                                    rows={2}
                                     autoFocus
+                                    placeholder="Sub-task title/description"
                                 />
-                                <div className="flex gap-1">
-                                    <button type="button" onClick={handleSaveEditedSubTask} className="p-1 text-success hover:text-success-focus focus:outline-none" title="Save Sub-task">
+                                 <select 
+                                    value={editingSubTask.category} 
+                                    onChange={(e) => setEditingSubTask({...editingSubTask!, category: e.target.value as TaskResetCategory | ""})}
+                                    className="block w-full bg-base-100 border border-primary rounded-md shadow-sm py-1.5 px-2 focus:outline-none focus:ring-1 focus:ring-primary sm:text-sm appearance-none text-xs"
+                                >
+                                    <option value="">No Category (Resets with Parent)</option>
+                                    {Object.values(TaskResetCategory).map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                                </select>
+                                <div className="flex gap-2 justify-end">
+                                    <button type="button" onClick={handleSaveEditedSubTask} className="p-1.5 text-success hover:text-success-focus focus:outline-none rounded-md bg-base-200 hover:bg-success/20" title="Save Sub-task">
                                         <SaveIcon className="w-5 h-5"/>
                                     </button>
-                                    <button type="button" onClick={handleCancelEditSubTask} className="p-1 text-neutral-content hover:text-opacity-70 focus:outline-none" title="Cancel Edit">
+                                    <button type="button" onClick={handleCancelEditSubTask} className="p-1.5 text-neutral-content hover:opacity-70 focus:outline-none rounded-md bg-base-200 hover:bg-neutral/30" title="Cancel Edit">
                                         <CancelIcon className="w-5 h-5"/>
                                     </button>
                                 </div>
-                            </>
+                            </div>
                         ) : (
-                            <>
-                                <span className="text-sm text-base-content-secondary flex-grow">{subTask.title}</span>
-                                <div className="flex gap-1">
+                            <div className="flex items-start justify-between">
+                                <div className="text-sm text-base-content-secondary flex-grow pr-2">
+                                  {/* Using UrlRenderer here for consistency if needed, or keep as <p> if simple text is fine */}
+                                  <p className="whitespace-pre-wrap">{subTask.title}</p>
+                                  {subTask.category && <p className="text-xs text-base-content-secondary/70 mt-0.5">{subTask.category}</p>}
+                                </div>
+                                <div className="flex gap-1 flex-shrink-0">
                                     <button type="button" onClick={() => handleEditSubTask(index)} className="p-1 text-secondary hover:text-secondary-focus focus:outline-none" title="Edit Sub-task">
                                         <PencilSquareIcon className="w-4 h-4"/>
                                     </button>
@@ -276,27 +347,37 @@ export const TaskForm: React.FC<FormComponentProps<ManagedTask> & { globalTagDef
                                         <TrashIcon className="w-4 h-4"/>
                                     </button>
                                 </div>
-                            </>
+                            </div>
                         )}
                     </div>
                 ))}
             </div>
             {editingSubTask === null && (
-              <div className="mt-3 flex">
-                  <input
-                      type="text"
+              <div className="mt-4 p-3 border border-dashed border-base-300 rounded-md space-y-2">
+                  <textarea
                       value={currentSubTaskTitle}
                       onChange={(e) => setCurrentSubTaskTitle(e.target.value)}
-                      onKeyDown={(e) => { if(e.key === 'Enter') { e.preventDefault(); handleAddSubTask();}}}
-                      placeholder="Enter sub-task title"
-                      className="flex-grow bg-base-200 border border-base-300 rounded-l-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
+                      onKeyDown={(e) => { if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleAddSubTask();}}}
+                      placeholder="Enter sub-task title/description (Shift+Enter for new line)"
+                      className="block w-full bg-base-200 border border-base-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
+                      rows={2}
                   />
-                  <button type="button" onClick={handleAddSubTask} className="bg-secondary text-white px-3 py-2 rounded-r-md hover:bg-secondary-focus flex items-center focus:outline-none">
-                      <PlusCircleIcon className="w-4 h-4 mr-1 sm:mr-0 md:mr-1"/> <span className="hidden sm:inline md:hidden lg:inline">Add Sub-task</span>
-                  </button>
+                  <div className="flex gap-2 items-center">
+                    <select 
+                        value={currentSubTaskCategory} 
+                        onChange={(e) => setCurrentSubTaskCategory(e.target.value as TaskResetCategory | "")}
+                        className="flex-grow bg-base-200 border border-base-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm appearance-none text-xs"
+                    >
+                        <option value="">No Category (Resets with Parent)</option>
+                        {Object.values(TaskResetCategory).map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                    </select>
+                    <button type="button" onClick={handleAddSubTask} className="bg-secondary text-white px-3 py-2 rounded-md hover:bg-secondary-focus flex items-center focus:outline-none text-sm">
+                        <PlusCircleIcon className="w-4 h-4 mr-1 sm:mr-0 md:mr-1"/> <span className="hidden sm:inline md:hidden lg:inline">Add</span>
+                    </button>
+                  </div>
               </div>
             )}
-            {(taskData.sub_tasks || []).length === 0 && (
+            {(taskData.sub_tasks || []).length === 0 && editingSubTask === null && (
                 <p className="text-xs text-base-content-secondary mt-2">No sub-tasks yet. Add some if this is a multi-step task.</p>
             )}
         </div>

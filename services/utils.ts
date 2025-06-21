@@ -1,3 +1,4 @@
+
 import { TaskResetCategory, ManagedTask, WeekDays } from '../types';
 
 export function classNames(...classes: (string | undefined | null | false)[]): string {
@@ -44,28 +45,51 @@ export function formatTimestamp(
   }
 }
 
-export function formatTimeDifference(timestamp?: number | string, timeZone: string = 'Asia/Jakarta'): string {
-    const tsNumber = typeof timestamp === 'string' ? parseSupabaseDate(timestamp) : timestamp;
-    if (!tsNumber) return 'N/A';
-
-    // Untuk perbedaan waktu, kita bandingkan dengan 'now' dalam timezone yang sama
-    // Namun, Date.now() selalu UTC. Perbedaan absolut tidak bergantung timezone.
-    const now = Date.now();
-    const diff = tsNumber - now;
-
-    if (diff <= 0) return "Now / Past";
-
-    const seconds = Math.floor(diff / 1000);
-    const minutes = Math.floor(seconds / 60);
-    const hours = Math.floor(minutes / 60);
-    const days = Math.floor(hours / 24);
-
-    if (days > 0) return `${days}h ${hours % 24}j tersisa`;
-    if (hours > 0) return `${hours}j ${minutes % 60}m tersisa`;
-    if (minutes > 0) return `${minutes}m ${seconds % 60}d tersisa`; // 'd' untuk detik
-    if (seconds > 0) return `${seconds}d tersisa`;
-    return "Segera";
+interface TimeParts {
+  days: number;
+  hours: number;
+  minutes: number;
+  seconds: number;
+  isPast: boolean;
 }
+
+export function calculateTimeParts(targetTimestamp?: number): TimeParts {
+  if (targetTimestamp === undefined || targetTimestamp === null) {
+    return { days: 0, hours: 0, minutes: 0, seconds: 0, isPast: true }; // Consider as past if no target
+  }
+
+  const now = Date.now();
+  const diff = targetTimestamp - now;
+
+  if (diff <= 0) {
+    return { days: 0, hours: 0, minutes: 0, seconds: 0, isPast: true };
+  }
+
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+  const minutes = Math.floor((diff / 1000 / 60) % 60);
+  const seconds = Math.floor((diff / 1000) % 60);
+
+  return { days, hours, minutes, seconds, isPast: false };
+}
+
+export function formatTimeDifference(targetTimestamp?: number | string): string {
+    const tsNumber = typeof targetTimestamp === 'string' ? parseSupabaseDate(targetTimestamp) : targetTimestamp;
+    
+    if (tsNumber === undefined || tsNumber === null) return 'N/A';
+
+    const { days, hours, minutes, seconds, isPast } = calculateTimeParts(tsNumber);
+
+    if (isPast) return "Saatnya / Terlewat";
+
+    if (days > 0) return `${days}h ${hours}j tersisa`;
+    if (hours > 0) return `${hours}j ${minutes}m tersisa`;
+    if (minutes > 0) return `${minutes}m ${seconds}d tersisa`;
+    if (seconds >= 0) return `${seconds}d tersisa`; // Show 0d if exactly on time
+    
+    return "Segera"; // Should be covered by isPast for 0 or negative diff
+}
+
 
 // Fungsi helper untuk mendapatkan tanggal tengah malam di WIB
 function getMidnightWIB(date: Date): Date {

@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { UserCircleIcon } from './shared/icons/HeroIcons'; // Using UserCircleIcon as a generic login icon
 
 interface LoginPageProps {
-  onLogin: (userId: string, username: string) => void;
+  onLogin: (userId: string) => void; // Updated to only accept userId
   appError: string | null;
   clearAppError: () => void;
 }
@@ -15,7 +15,6 @@ const isValidUUID = (uuid: string) => {
 
 export const LoginPage: React.FC<LoginPageProps> = ({ onLogin, appError, clearAppError }) => {
   const [userIdInput, setUserIdInput] = useState('');
-  const [usernameInput, setUsernameInput] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -24,7 +23,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin, appError, clearAp
     setFormError(null);
 
     const trimmedUserId = userIdInput.trim();
-    const trimmedUsername = usernameInput.trim();
 
     if (!trimmedUserId) {
       setFormError("User ID is required.");
@@ -34,12 +32,8 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin, appError, clearAp
         setFormError("User ID must be a valid UUID (e.g., a1b2c3d4-e5f6-7890-1234-567890abcdef).");
         return;
     }
-    if (!trimmedUsername) {
-      setFormError("Username is required.");
-      return;
-    }
     
-    onLogin(trimmedUserId, trimmedUsername);
+    onLogin(trimmedUserId); // Call onLogin with only userId
   };
 
   return (
@@ -47,8 +41,8 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin, appError, clearAp
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
             <UserCircleIcon className="w-16 h-16 text-primary mx-auto mb-3" />
-            <h1 className="text-3xl font-bold text-primary">Welcome Back!</h1>
-            <p className="text-base-content-secondary mt-1">Enter your User ID and Username to continue.</p>
+            <h1 className="text-3xl font-bold text-primary">Login</h1>
+            <p className="text-base-content-secondary mt-1">Enter your User ID to continue.</p>
         </div>
 
         {appError && (
@@ -74,7 +68,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin, appError, clearAp
               <input
                 id="userId"
                 name="userId"
-                type="password"
+                type="password" 
                 autoComplete="off"
                 required
                 value={userIdInput}
@@ -83,26 +77,9 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin, appError, clearAp
                 className="mt-1 block w-full bg-base-100 border border-base-300 rounded-md shadow-sm py-2.5 px-3 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
               />
             </div>
-
-            <div>
-              <label htmlFor="username" className="block text-sm font-medium text-base-content-secondary mb-1">
-                Username
-              </label>
-              <input
-                id="username"
-                name="username"
-                type="text"
-                autoComplete="username"
-                required
-                value={usernameInput}
-                onChange={(e) => setUsernameInput(e.target.value)}
-                placeholder="Enter your username"
-                className="mt-1 block w-full bg-base-100 border border-base-300 rounded-md shadow-sm py-2.5 px-3 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
-              />
-            </div>
             
             <p className="text-xs text-base-content-secondary">
-                Note: This is a simplified login for local use. User ID must be an existing ID in your Supabase 'profiles' table.
+                Note: User ID must be an existing ID in your Supabase 'profiles' table.
             </p>
 
             <div>

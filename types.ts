@@ -21,6 +21,9 @@ export const WeekDays = [
 export interface SubTask {
   title: string;
   isCompleted: boolean;
+  category?: TaskResetCategory | "";
+  last_completion_timestamp?: string | null; // Timestamp for sub-task's own completion
+  next_reset_timestamp?: string | null;      // Timestamp for sub-task's own reset
 }
 
 // Interface for globally managed tags, aligning with Supabase table
