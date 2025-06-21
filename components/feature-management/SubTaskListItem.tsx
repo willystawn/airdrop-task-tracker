@@ -44,7 +44,7 @@ export const SubTaskListItem: React.FC<SubTaskListItemProps> = ({ subTask, taskI
         {subTask.isCompleted ? <CheckCircleIcon className="w-5 h-5 text-success/80" /> : <CircleIcon className="w-5 h-5 text-base-content-secondary/70" />}
       </button>
       <div className="flex-grow">
-        <div className={subTask.isCompleted ? 'line-through text-base-content-secondary/80' : 'text-base-content-secondary'}>
+        <div className={subTask.isCompleted ? 'text-base-content-secondary/80' : 'text-base-content-secondary'}>
           <UrlRenderer text={subTask.title} renderAsParagraphs={true} />
         </div>
         {(subTask.category || (subTaskTimeToReset && subTaskTimeToReset !== 'N/A' && subTaskTimeToReset !== 'Menghitung...')) && (

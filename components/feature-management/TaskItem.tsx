@@ -63,7 +63,7 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task, onToggleComplete, glob
       </button>
       {task.logo_url && <img src={task.logo_url} alt="task logo" className="w-10 h-10 rounded-lg object-cover flex-shrink-0" />}
       <div className="flex-grow text-left overflow-hidden">
-        <h3 className={`font-semibold ${task.is_completed ? 'line-through text-base-content-secondary' : 'text-base-content'} group-hover:text-primary transition-colors`}>
+        <h3 className={`font-semibold ${task.is_completed ? 'text-base-content-secondary' : 'text-base-content'} group-hover:text-primary transition-colors`}>
           <UrlRenderer text={task.title} />
         </h3>
         <div className="text-xs text-base-content-secondary flex items-center mt-1">
