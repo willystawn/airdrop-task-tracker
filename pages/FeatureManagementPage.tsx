@@ -162,7 +162,7 @@ export const FeatureManagementPage: React.FC<FeatureManagementPageProps> = ({
 
       <div className="mb-6 p-4 bg-base-200/80 rounded-lg shadow">
         <div className="flex justify-between items-center mb-3">
-            <h2 className="text-xl font-semibold text-primary">Manage System Tags</h2>
+            <h2 className="text-xl font-semibold text-primary">Manage Tags</h2>
             <button 
                 onClick={() => setIsManageTagsVisible(!isManageTagsVisible)}
                 className="p-1 text-base-content-secondary hover:text-primary focus:outline-none"

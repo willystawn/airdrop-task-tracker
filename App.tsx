@@ -97,7 +97,6 @@ const App: React.FC = () => {
   useEffect(() => {
     const storedUserId = localStorage.getItem(LOCAL_STORAGE_USER_ID_KEY);
     if (storedUserId) {
-      console.log(`[App.tsx] Found stored User ID. Attempting auto-login for user ID: ${storedUserId}`);
       handleLogin(storedUserId, true); 
     }
   }, []); 
@@ -117,7 +116,6 @@ const App: React.FC = () => {
     
     if (!isAutoLogin) { 
         localStorage.setItem(LOCAL_STORAGE_USER_ID_KEY, userId);
-        console.log(`[App.tsx handleLogin] User ID saved to localStorage: ${userId}`);
     }
   };
 
@@ -127,7 +125,6 @@ const App: React.FC = () => {
     setGlobalTagDefinitions([]);
     setAppError(null);
     localStorage.removeItem(LOCAL_STORAGE_USER_ID_KEY);
-    console.log("[App.tsx handleLogout] User logged out and User ID cleared from localStorage.");
   };
 
 
@@ -142,7 +139,6 @@ const App: React.FC = () => {
     }
 
     const loadData = async () => {
-      console.log(`[App.tsx loadData] Loading data for user: ${currentUser.id}`);
       setAppLoading(true); 
       setAppError(null);
       try {
@@ -698,7 +694,6 @@ const App: React.FC = () => {
 
   const handleDeleteTask = useCallback(async (taskId: string) => {
     if (!supabase || !currentUser?.id) return;
-    console.log(`[App.tsx] handleDeleteTask called for task ID: ${taskId}`);
     if (!currentUser?.id) {
         setAppError("User not identified. Cannot delete task.");
         return;
@@ -716,7 +711,6 @@ const App: React.FC = () => {
       console.error(`[App.tsx] Supabase error deleting task ${taskId}:`, error);
       setAppError(`Failed to delete task: ${formatSupabaseError(error)} (ID: ${taskId})`);
     } else {
-      console.log(`[App.tsx] Task ${taskId} successfully deleted from Supabase.`);
       setTasks(prevTasks => prevTasks.filter(t => t.id !== taskId));
     }
     setAppLoading(false);
