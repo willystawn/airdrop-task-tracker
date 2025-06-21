@@ -470,8 +470,8 @@ export const TaskForm: React.FC<FormComponentProps<ManagedTask> & { globalTagDef
                             value={currentSubTaskHours || ''}
                             onChange={(e) => setCurrentSubTaskHours(e.target.value ? parseInt(e.target.value, 10) : null)}
                             min="1"
-                            placeholder="Hours (e.g., 3)"
-                            className="flex-grow w-full sm:w-auto bg-base-200 border border-base-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm text-xs"
+                            placeholder="Hours"
+                            className="w-full sm:w-20 bg-base-200 border border-base-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm text-xs"
                         />
                     )}
                     <button type="button" onClick={handleAddSubTask} className="w-full sm:w-auto bg-secondary text-white px-3 py-2 rounded-md hover:bg-secondary-focus flex items-center justify-center focus:outline-none text-sm">
