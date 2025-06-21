@@ -8,13 +8,13 @@ export enum TaskResetCategory {
 }
 
 export const WeekDays = [
-  { id: 0, name: "Minggu" }, // Sunday
-  { id: 1, name: "Senin" },   // Monday
-  { id: 2, name: "Selasa" },  // Tuesday
-  { id: 3, name: "Rabu" }, // Wednesday
-  { id: 4, name: "Kamis" }, // Thursday
-  { id: 5, name: "Jumat" },  // Friday
-  { id: 6, name: "Sabtu" },  // Saturday
+  { id: 0, name: "Sunday" }, // Minggu 
+  { id: 1, name: "Monday" },   // Senin 
+  { id: 2, name: "Tuesday" },  // Selasa 
+  { id: 3, name: "Wednesday" }, // Rabu 
+  { id: 4, name: "Thursday" }, // Kamis 
+  { id: 5, name: "Friday" },  // Jumat 
+  { id: 6, name: "Saturday" },  // Sabtu 
 ];
 
 // Interface untuk SubTask (child task)
