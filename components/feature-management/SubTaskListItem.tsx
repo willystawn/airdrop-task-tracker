@@ -18,6 +18,8 @@ const getSubCategoryIcon = (category: TaskResetCategory | "", className?: string
       return <CalendarDaysIcon className={`${baseClassName} text-blue-400/80`} />;
     case TaskResetCategory.COUNTDOWN_24H:
       return <ClockIcon className={`${baseClassName} text-orange-400/80`} />;
+    case TaskResetCategory.SPECIFIC_HOURS: // New Icon for sub-task
+      return <ClockIcon className={`${baseClassName} text-teal-400/80`} />;
     case TaskResetCategory.WEEKLY_MONDAY:
     case TaskResetCategory.SPECIFIC_DAY:
       return <CalendarDaysIcon className={`${baseClassName} text-purple-400/80`} />;
@@ -50,6 +52,9 @@ export const SubTaskListItem: React.FC<SubTaskListItemProps> = ({ subTask, taskI
             {subTask.category && (
               <span className="text-base-content-secondary/70 flex items-center">
                 {getSubCategoryIcon(subTask.category)} {subTask.category}
+                {subTask.category === TaskResetCategory.SPECIFIC_HOURS && subTask.specific_reset_hours && (
+                    <span className="ml-0.5">(Every {subTask.specific_reset_hours}h)</span>
+                )}
               </span>
             )}
             {subTask.isCompleted && subTaskTimeToReset && subTaskTimeToReset !== 'N/A' && subTaskTimeToReset !== "Saatnya / Terlewat" && (

@@ -4,6 +4,7 @@ export enum TaskResetCategory {
   COUNTDOWN_24H = "24h Countdown",
   WEEKLY_MONDAY = "Weekly (Monday)",
   SPECIFIC_DAY = "Specific Day",
+  SPECIFIC_HOURS = "Specific Hours", // New Category
 }
 
 export const WeekDays = [
@@ -22,6 +23,7 @@ export interface SubTask {
   title: string;
   isCompleted: boolean;
   category?: TaskResetCategory | "";
+  specific_reset_hours?: number | null; // New field for specific hours category
   last_completion_timestamp?: string | null; // Timestamp for sub-task's own completion
   next_reset_timestamp?: string | null;      // Timestamp for sub-task's own reset
 }
@@ -45,6 +47,7 @@ export interface ManagedTask {
   is_completed: boolean;
   category: TaskResetCategory; 
   specific_reset_days?: number[] | null; 
+  specific_reset_hours?: number | null; // New field for specific hours category
   last_completion_timestamp?: string | null; 
   next_reset_timestamp?: string | null; 
   tags: string[]; 

@@ -81,13 +81,13 @@ export const INITIAL_TASKS: Omit<ManagedTask, 'id' | 'user_id'>[] = [
     is_completed: false,
     category: TaskResetCategory.DAILY,
     tags: ["Daily Login", "Points", "DeFi"],
-    // Timestamps are handled during seeding in App.tsx
     next_reset_timestamp: toSupabaseDate(calculateNextResetTimestamp(TaskResetCategory.DAILY, undefined, Date.now(), false)),
     last_completion_timestamp: undefined,
     sub_tasks: [],
     created_at: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
     updated_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
     specific_reset_days: [],
+    specific_reset_hours: null,
   },
   {
     title: "Weekly Zealy Quests: Galaxy DAO",
@@ -101,6 +101,7 @@ export const INITIAL_TASKS: Omit<ManagedTask, 'id' | 'user_id'>[] = [
     created_at: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
     updated_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
     specific_reset_days: [],
+    specific_reset_hours: null,
   },
   { 
     title: "Project Alpha Campaign", 
@@ -121,12 +122,14 @@ export const INITIAL_TASKS: Omit<ManagedTask, 'id' | 'user_id'>[] = [
         tags: ["Project Alpha", "Campaign", "Multi-step"], 
         is_completed: false,
         specific_reset_days: [],
+        specific_reset_hours: null,
         logo_url: undefined,
     })),
     last_completion_timestamp: undefined,
     created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
     updated_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
     specific_reset_days: [],
+    specific_reset_hours: null,
   },
    {
     title: "24h Claim: Test Token Faucet",
@@ -135,10 +138,26 @@ export const INITIAL_TASKS: Omit<ManagedTask, 'id' | 'user_id'>[] = [
     category: TaskResetCategory.COUNTDOWN_24H,
     tags: ["Faucet", "Testnet", "Claim"],
     last_completion_timestamp: toSupabaseDate(Date.now() - 10 * 60 * 60 * 1000), 
-    next_reset_timestamp: toSupabaseDate(calculateNextResetTimestamp(TaskResetCategory.COUNTDOWN_24H, undefined, Date.now() - 10 * 60 * 60 * 1000, false)), // false, as it's not 'just completed' for initial setup
+    next_reset_timestamp: toSupabaseDate(calculateNextResetTimestamp(TaskResetCategory.COUNTDOWN_24H, undefined, Date.now() - 10 * 60 * 60 * 1000, false)), 
     sub_tasks: [],
     created_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
     updated_at: new Date(Date.now() - 10 * 60 * 60 * 1000).toISOString(), 
+    specific_reset_days: [],
+    specific_reset_hours: null,
+  },
+  {
+    title: "Hourly Check: Server Status Bot",
+    description: "Bot checks server status every 3 hours. Manual trigger if needed.",
+    logo_url: "https://picsum.photos/seed/serverbot/200",
+    is_completed: false,
+    category: TaskResetCategory.SPECIFIC_HOURS,
+    specific_reset_hours: 3, // Resets every 3 hours
+    tags: ["Utility", "Bot", "Monitoring"],
+    next_reset_timestamp: toSupabaseDate(calculateNextResetTimestamp(TaskResetCategory.SPECIFIC_HOURS, undefined, Date.now(), false, 3)),
+    last_completion_timestamp: undefined,
+    sub_tasks: [],
+    created_at: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(), // 5 hours ago
+    updated_at: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
     specific_reset_days: [],
   }
 ];

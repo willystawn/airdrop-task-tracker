@@ -102,9 +102,10 @@ function getMidnightWIB(date: Date): Date {
 
 export function calculateNextResetTimestamp(
   taskCategory: TaskResetCategory,
-  specificResetDays: number[] | undefined, // Array hari (0 Minggu - 6 Sabtu)
+  specificResetDays: number[] | undefined | null, // Array hari (0 Minggu - 6 Sabtu)
   baseTimestamp: number, // Biasanya Date.now() atau last_completion_timestamp (UTC)
-  isTaskJustCompleted: boolean = false
+  isTaskJustCompleted: boolean = false,
+  specificResetHours?: number | null
 ): number {
   const baseDate = new Date(baseTimestamp); // Ini adalah UTC
   let nextResetDateUTC = new Date(baseTimestamp);
@@ -123,6 +124,15 @@ export function calculateNextResetTimestamp(
 
     case TaskResetCategory.COUNTDOWN_24H:
       return baseTimestamp + 24 * 60 * 60 * 1000;
+    
+    case TaskResetCategory.SPECIFIC_HOURS:
+      if (specificResetHours && specificResetHours > 0) {
+        return baseTimestamp + specificResetHours * 60 * 60 * 1000;
+      }
+      // Fallback if hours not set or invalid, treat like 24h countdown or a default
+      console.warn(`Specific hours not set or invalid for SPECIFIC_HOURS category. Defaulting to 24h.`);
+      return baseTimestamp + 24 * 60 * 60 * 1000;
+
 
     case TaskResetCategory.WEEKLY_MONDAY:
     case TaskResetCategory.SPECIFIC_DAY:
@@ -168,6 +178,7 @@ export function getInitialNextResetTimestamp(task: Omit<ManagedTask, 'id' | 'use
         task.category,
         task.specific_reset_days,
         Date.now(),
-        false // Bukan baru selesai, ini kalkulasi awal
+        false, // Bukan baru selesai, ini kalkulasi awal
+        task.specific_reset_hours
     );
 }

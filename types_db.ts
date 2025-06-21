@@ -54,6 +54,7 @@ export type Database = {
           is_completed: boolean
           category: string // Corresponds to TaskResetCategory enum
           specific_reset_days: number[] | null
+          specific_reset_hours: number | null // New field
           last_completion_timestamp: string | null
           next_reset_timestamp: string | null
           tags: string[] | null
@@ -70,6 +71,7 @@ export type Database = {
           is_completed?: boolean
           category: string
           specific_reset_days?: number[] | null
+          specific_reset_hours?: number | null // New field
           last_completion_timestamp?: string | null
           next_reset_timestamp?: string | null
           tags?: string[] | null
@@ -86,6 +88,7 @@ export type Database = {
           is_completed?: boolean
           category?: string
           specific_reset_days?: number[] | null
+          specific_reset_hours?: number | null // New field
           last_completion_timestamp?: string | null
           next_reset_timestamp?: string | null
           tags?: string[] | null
@@ -160,4 +163,5 @@ export type Database = {
 // export interface SubTask {
 //   title: string;
 //   isCompleted: boolean;
+//   specific_reset_hours?: number | null; // Added for completeness, though subtask details are in main types.ts
 // }

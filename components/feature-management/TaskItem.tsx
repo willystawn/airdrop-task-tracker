@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { ManagedTask, TaskResetCategory, GlobalTag } from '../../types';
 import { Accordion } from '../shared/Accordion';
@@ -23,6 +24,8 @@ const getCategoryIcon = (category: TaskResetCategory | "", className?: string) =
       return <CalendarDaysIcon className={`${baseClassName} text-blue-400`} />;
     case TaskResetCategory.COUNTDOWN_24H:
       return <ClockIcon className={`${baseClassName} text-orange-400`} />;
+    case TaskResetCategory.SPECIFIC_HOURS: // New Icon
+      return <ClockIcon className={`${baseClassName} text-teal-400`} />; 
     case TaskResetCategory.WEEKLY_MONDAY:
     case TaskResetCategory.SPECIFIC_DAY:
       return <CalendarDaysIcon className={`${baseClassName} text-purple-400`} />;
@@ -68,6 +71,9 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task, onToggleComplete, glob
           {task.category === TaskResetCategory.SPECIFIC_DAY && task.specific_reset_days && task.specific_reset_days.length > 0 && (
             <span className="ml-1">({task.specific_reset_days.map(d => ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"][d]).join(', ')})</span>
           )}
+          {task.category === TaskResetCategory.SPECIFIC_HOURS && task.specific_reset_hours && (
+            <span className="ml-1">(Every {task.specific_reset_hours}h)</span>
+          )}
         </div>
       </div>
        {task.is_completed && timeToReset && timeToReset !== 'N/A' && timeToReset !== "Saatnya / Terlewat" && (
@@ -92,7 +98,7 @@ export const TaskItem: React.FC<TaskItemProps> = ({ task, onToggleComplete, glob
     <div className="mb-3 bg-base-200 shadow-lg rounded-lg group transition-all duration-200 hover:shadow-primary/30">
       <Accordion 
         titleContent={titleContent}
-        initiallyOpen={hasSubTasks && !(task.sub_tasks?.every(st => st.isCompleted))}
+        initiallyOpen={false} // Changed to false
       >
         <div className="space-y-3">
           <div className="text-sm text-base-content-secondary prose prose-sm max-w-none prose-a:text-accent prose-a:hover:underline">
