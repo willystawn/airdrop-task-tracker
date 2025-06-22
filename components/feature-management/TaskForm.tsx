@@ -418,7 +418,7 @@ export const TaskForm: React.FC<FormComponentProps<ManagedTask> & { globalTagDef
                         ) : (
                             <div className="flex items-start justify-between">
                                 <div className="text-sm text-base-content-secondary flex-grow pr-2">
-                                  <p className="whitespace-pre-wrap">{subTask.title}</p>
+                                  <p className="whitespace-pre-wrap break-all">{subTask.title}</p>
                                   {subTask.category && (
                                     <p className="text-xs text-base-content-secondary/70 mt-0.5">
                                         {subTask.category}
