@@ -22,37 +22,38 @@ function parseSubTasksFromDb(dbSubTasks: Json | null): SubTask[] | null {
     if (!dbSubTasks) {
         return null;
     }
+    // Ensure dbSubTasks is treated as an array of objects for mapping
+    let subTaskObjects: any[];
+
     if (typeof dbSubTasks === 'string') {
         try {
             const parsed = JSON.parse(dbSubTasks);
             if (Array.isArray(parsed)) {
-                return parsed.map(st => ({
-                    title: st.title || "",
-                    isCompleted: st.isCompleted || false,
-                    category: st.category || "",
-                    specific_reset_hours: st.specific_reset_hours || null,
-                    last_completion_timestamp: st.last_completion_timestamp || null,
-                    next_reset_timestamp: st.next_reset_timestamp || null,
-                })) as SubTask[];
+                subTaskObjects = parsed;
+            } else {
+                console.warn("Parsed sub_tasks from string is not an array:", parsed);
+                return [];
             }
-            console.warn("Parsed sub_tasks from string is not an array:", parsed);
-            return []; 
         } catch (e) {
             console.error("Error parsing sub_tasks JSON string from DB:", e);
-            return []; 
+            return [];
         }
     } else if (Array.isArray(dbSubTasks)) {
-         return (dbSubTasks as any[]).map(st => ({
-            title: st.title || "",
-            isCompleted: st.isCompleted || false,
-            category: st.category || "",
-            specific_reset_hours: st.specific_reset_hours || null,
-            last_completion_timestamp: st.last_completion_timestamp || null,
-            next_reset_timestamp: st.next_reset_timestamp || null,
-        })) as SubTask[];
+        subTaskObjects = dbSubTasks;
+    } else {
+        console.warn("sub_tasks from DB is in an unexpected format (not string or array):", dbSubTasks);
+        return [];
     }
-    console.warn("sub_tasks from DB is in an unexpected format (not string or array):", dbSubTasks);
-    return []; 
+    
+    return subTaskObjects.map(st => ({
+        title: st.title || "",
+        isCompleted: st.isCompleted || false,
+        category: st.category || "",
+        specific_reset_hours: st.specific_reset_hours || null,
+        specific_reset_days: st.specific_reset_days || [], // Ensure default for specific_reset_days
+        last_completion_timestamp: st.last_completion_timestamp || null,
+        next_reset_timestamp: st.next_reset_timestamp || null,
+    })) as SubTask[];
 }
 
 const formatSupabaseError = (error: any, defaultMessage: string = "An unknown error occurred."): string => {
@@ -197,9 +198,10 @@ const App: React.FC = () => {
               ...st,
               last_completion_timestamp: st.category && st.isCompleted && st.last_completion_timestamp ? toSupabaseDate(parseSupabaseDate(st.last_completion_timestamp)) : null,
               next_reset_timestamp: st.category && st.next_reset_timestamp ? toSupabaseDate(parseSupabaseDate(st.next_reset_timestamp)) : (
-                st.category ? toSupabaseDate(calculateNextResetTimestamp(st.category, undefined, Date.now(), st.isCompleted, st.specific_reset_hours)) : null
+                st.category ? toSupabaseDate(calculateNextResetTimestamp(st.category, st.specific_reset_days, Date.now(), st.isCompleted, st.specific_reset_hours)) : null
               ),
               specific_reset_hours: st.specific_reset_hours || null,
+              specific_reset_days: st.specific_reset_days || [],
             }));
             return {
               ...task,
@@ -337,7 +339,7 @@ const App: React.FC = () => {
                         subTaskCopy.isCompleted = false;
                         subTaskCopy.last_completion_timestamp = null;
                         subTaskCopy.next_reset_timestamp = toSupabaseDate(calculateNextResetTimestamp(
-                            subTaskCopy.category, undefined, now, false, subTaskCopy.specific_reset_hours
+                            subTaskCopy.category, subTaskCopy.specific_reset_days, now, false, subTaskCopy.specific_reset_hours
                         ));
                         taskRequiresDbUpdate = true;
                         subTasksModified = true;
@@ -364,7 +366,7 @@ const App: React.FC = () => {
               const subTasksAfterParentReset = currentSubTasks.map(st => {
                   if (!st.category) { 
                       if (st.isCompleted) categoryLessSubtasksModified = true;
-                      return { ...st, isCompleted: false, last_completion_timestamp: null, next_reset_timestamp: null, specific_reset_hours: null };
+                      return { ...st, isCompleted: false, last_completion_timestamp: null, next_reset_timestamp: null, specific_reset_hours: null, specific_reset_days: [] };
                   }
                   return st;
               });
@@ -381,7 +383,6 @@ const App: React.FC = () => {
           ));
           taskRequiresDbUpdate = true;
         } else if (!task.is_completed && nextResetNum && now >= nextResetNum && task.category === TaskResetCategory.SPECIFIC_HOURS) {
-            // For SPECIFIC_HOURS, if missed, reset from NOW, not just roll over the old next_reset_timestamp
             payloadForDb.next_reset_timestamp = toSupabaseDate(calculateNextResetTimestamp(
                 task.category, task.specific_reset_days, now, false, task.specific_reset_hours
             ));
@@ -464,6 +465,7 @@ const App: React.FC = () => {
             isCompleted: st.isCompleted,
             category: st.category || undefined,
             specific_reset_hours: st.category === TaskResetCategory.SPECIFIC_HOURS ? st.specific_reset_hours : null,
+            specific_reset_days: st.category === TaskResetCategory.SPECIFIC_DAY ? st.specific_reset_days : [],
             last_completion_timestamp: st.last_completion_timestamp || null,
             next_reset_timestamp: st.next_reset_timestamp || null,
           }))) 
@@ -544,6 +546,7 @@ const App: React.FC = () => {
             isCompleted: st.isCompleted,
             category: st.category || undefined,
             specific_reset_hours: st.category === TaskResetCategory.SPECIFIC_HOURS ? st.specific_reset_hours : null,
+            specific_reset_days: st.category === TaskResetCategory.SPECIFIC_DAY ? st.specific_reset_days : [],
             last_completion_timestamp: st.last_completion_timestamp || null,
             next_reset_timestamp: st.next_reset_timestamp || null,
           }))) 
@@ -599,7 +602,7 @@ const App: React.FC = () => {
                 subTask.last_completion_timestamp = subTask.isCompleted ? toSupabaseDate(now) : null;
                 subTask.next_reset_timestamp = toSupabaseDate(calculateNextResetTimestamp(
                     subTask.category,
-                    undefined, 
+                    subTask.specific_reset_days, 
                     now,
                     subTask.isCompleted,
                     subTask.specific_reset_hours
@@ -608,6 +611,7 @@ const App: React.FC = () => {
                 subTask.last_completion_timestamp = null;
                 subTask.next_reset_timestamp = null;
                 subTask.specific_reset_hours = null;
+                subTask.specific_reset_days = [];
             }
         }
         finalCompletedStatus = newSubTasksArray.every(st => st.isCompleted);
@@ -619,12 +623,13 @@ const App: React.FC = () => {
                 if (newSubTaskState.category) { 
                     newSubTaskState.last_completion_timestamp = finalCompletedStatus ? toSupabaseDate(now) : null;
                     newSubTaskState.next_reset_timestamp = toSupabaseDate(calculateNextResetTimestamp(
-                        newSubTaskState.category, undefined, now, finalCompletedStatus, newSubTaskState.specific_reset_hours
+                        newSubTaskState.category, newSubTaskState.specific_reset_days, now, finalCompletedStatus, newSubTaskState.specific_reset_hours
                     ));
                 } else {
                     newSubTaskState.last_completion_timestamp = null;
                     newSubTaskState.next_reset_timestamp = null;
                     newSubTaskState.specific_reset_hours = null;
+                    newSubTaskState.specific_reset_days = [];
                 }
                 return newSubTaskState;
             });
@@ -633,16 +638,15 @@ const App: React.FC = () => {
     
     let baseTimeForParentResetCalc = now;
     if ((taskToUpdate.category === TaskResetCategory.COUNTDOWN_24H || taskToUpdate.category === TaskResetCategory.SPECIFIC_HOURS) && finalCompletedStatus) {
-      baseTimeForParentResetCalc = now; // Use current time for countdowns/specific hours when completing
+      baseTimeForParentResetCalc = now; 
     } else if (taskToUpdate.category === TaskResetCategory.COUNTDOWN_24H && !finalCompletedStatus && taskToUpdate.last_completion_timestamp) {
-      // If uncompleting a 24h countdown, base it off its last completion to keep the original cycle if uncompleted before reset
        baseTimeForParentResetCalc = parseSupabaseDate(taskToUpdate.last_completion_timestamp) || now;
     }
 
 
     const taskDataForSupabase: Partial<Database['public']['Tables']['managed_tasks']['Update']> = {
       is_completed: finalCompletedStatus,
-      last_completion_timestamp: finalCompletedStatus ? toSupabaseDate(now) : null, // Set to now if completed, else null for most categories
+      last_completion_timestamp: finalCompletedStatus ? toSupabaseDate(now) : null,
       next_reset_timestamp: toSupabaseDate(calculateNextResetTimestamp(
         taskToUpdate.category, 
         taskToUpdate.specific_reset_days,
@@ -656,6 +660,7 @@ const App: React.FC = () => {
             isCompleted: st.isCompleted,
             category: st.category || undefined,
             specific_reset_hours: st.category === TaskResetCategory.SPECIFIC_HOURS ? st.specific_reset_hours : null,
+            specific_reset_days: st.category === TaskResetCategory.SPECIFIC_DAY ? st.specific_reset_days : [],
             last_completion_timestamp: st.last_completion_timestamp || null,
             next_reset_timestamp: st.next_reset_timestamp || null,
           }))) 
@@ -663,9 +668,8 @@ const App: React.FC = () => {
       updated_at: toSupabaseDate(now)!,
     };
     
-    // For COUNTDOWN_24H, if uncompleted, last_completion_timestamp should remain to maintain its original cycle.
     if (taskToUpdate.category === TaskResetCategory.COUNTDOWN_24H && !finalCompletedStatus) {
-        taskDataForSupabase.last_completion_timestamp = taskToUpdate.last_completion_timestamp; // Keep original if exists
+        taskDataForSupabase.last_completion_timestamp = taskToUpdate.last_completion_timestamp; 
     }
 
 

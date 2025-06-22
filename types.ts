@@ -24,6 +24,7 @@ export interface SubTask {
   isCompleted: boolean;
   category?: TaskResetCategory | "";
   specific_reset_hours?: number | null; // New field for specific hours category
+  specific_reset_days?: number[] | null; // Added for specific day resets on sub-tasks
   last_completion_timestamp?: string | null; // Timestamp for sub-task's own completion
   next_reset_timestamp?: string | null;      // Timestamp for sub-task's own reset
 }

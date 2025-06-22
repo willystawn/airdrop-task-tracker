@@ -1,5 +1,5 @@
 import React from 'react';
-import { SubTask, TaskResetCategory } from '../../types';
+import { SubTask, TaskResetCategory, WeekDays } from '../../types';
 import { UrlRenderer } from '../shared/UrlRenderer';
 import { CheckCircleIcon, CircleIcon, ClockIcon, CalendarDaysIcon, ArrowPathIcon, InformationCircleIcon } from '../shared/icons/HeroIcons';
 import { useCountdown } from '../../hooks/useCountdown';
@@ -18,7 +18,7 @@ const getSubCategoryIcon = (category: TaskResetCategory | "", className?: string
       return <CalendarDaysIcon className={`${baseClassName} text-blue-400/80`} />;
     case TaskResetCategory.COUNTDOWN_24H:
       return <ClockIcon className={`${baseClassName} text-orange-400/80`} />;
-    case TaskResetCategory.SPECIFIC_HOURS: // New Icon for sub-task
+    case TaskResetCategory.SPECIFIC_HOURS: 
       return <ClockIcon className={`${baseClassName} text-teal-400/80`} />;
     case TaskResetCategory.WEEKLY_MONDAY:
     case TaskResetCategory.SPECIFIC_DAY:
@@ -33,6 +33,10 @@ export const SubTaskListItem: React.FC<SubTaskListItemProps> = ({ subTask, taskI
   const subTaskTimeToReset = useCountdown(
     (subTask.category && subTask.isCompleted && subTaskNextResetNum) ? subTaskNextResetNum : undefined
   );
+
+  const formattedSpecificDays = subTask.category === TaskResetCategory.SPECIFIC_DAY && subTask.specific_reset_days && subTask.specific_reset_days.length > 0
+    ? ` (${subTask.specific_reset_days.map(d => WeekDays.find(wd => wd.id === d)?.name.substring(0,3)).filter(Boolean).join(', ')})`
+    : "";
 
   return (
     <li className="flex items-start gap-2 text-sm">
@@ -55,6 +59,7 @@ export const SubTaskListItem: React.FC<SubTaskListItemProps> = ({ subTask, taskI
                 {subTask.category === TaskResetCategory.SPECIFIC_HOURS && subTask.specific_reset_hours && (
                     <span className="ml-0.5">(Every {subTask.specific_reset_hours}h)</span>
                 )}
+                {formattedSpecificDays}
               </span>
             )}
             {subTask.isCompleted && subTaskTimeToReset && subTaskTimeToReset !== 'N/A' && subTaskTimeToReset !== "Saatnya / Terlewat" && (
@@ -67,7 +72,6 @@ export const SubTaskListItem: React.FC<SubTaskListItemProps> = ({ subTask, taskI
                  <InformationCircleIcon className="w-3 h-3 mr-0.5"/> {subTaskTimeToReset}
                </span>
             )}
-             {/* Show overdue for sub-task if not completed and past reset time */}
             {!subTask.isCompleted && subTask.category && subTaskNextResetNum && Date.now() > subTaskNextResetNum && (
                  <span className="text-error/80 flex items-center">
                     <InformationCircleIcon className="w-3 h-3 mr-0.5"/> Terlewat

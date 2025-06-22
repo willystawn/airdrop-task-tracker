@@ -28,14 +28,20 @@ export const TaskForm: React.FC<FormComponentProps<ManagedTask> & { globalTagDef
 }) => {
   const [taskData, setTaskData] = useState(initialFormStateOmit);
   const [currentTagInput, setCurrentTagInput] = useState('');
+  
+  // State for adding a new sub-task
   const [currentSubTaskTitle, setCurrentSubTaskTitle] = useState('');
   const [currentSubTaskCategory, setCurrentSubTaskCategory] = useState<TaskResetCategory | "">("");
   const [currentSubTaskHours, setCurrentSubTaskHours] = useState<number | null>(null);
+  const [currentSubTaskSpecificDays, setCurrentSubTaskSpecificDays] = useState<number[]>([]);
+
+  // State for editing an existing sub-task
   const [editingSubTask, setEditingSubTask] = useState<{ 
     index: number; 
     title: string; 
     category: TaskResetCategory | "";
     hours: number | null;
+    specific_days: number[] | null; // For specific days
   } | null>(null);
 
   useEffect(() => {
@@ -53,6 +59,7 @@ export const TaskForm: React.FC<FormComponentProps<ManagedTask> & { globalTagDef
             ...st, 
             category: st.category || "",
             specific_reset_hours: st.specific_reset_hours || null,
+            specific_reset_days: st.specific_reset_days || [], // Ensure default
             last_completion_timestamp: st.last_completion_timestamp,
             next_reset_timestamp: st.next_reset_timestamp,
         })),
@@ -60,10 +67,12 @@ export const TaskForm: React.FC<FormComponentProps<ManagedTask> & { globalTagDef
     } else if (!existingTask && isOpen) { 
       setTaskData(initialFormStateOmit);
     }
+    // Reset sub-task input fields
     setCurrentTagInput('');
     setCurrentSubTaskTitle('');
     setCurrentSubTaskCategory("");
     setCurrentSubTaskHours(null);
+    setCurrentSubTaskSpecificDays([]);
     setEditingSubTask(null); 
   }, [existingTask, isOpen]);
 
@@ -94,6 +103,27 @@ export const TaskForm: React.FC<FormComponentProps<ManagedTask> & { globalTagDef
     });
   };
 
+  const handleSubTaskDayToggle = (dayId: number, isEditing: boolean) => {
+    if (isEditing && editingSubTask) {
+        setEditingSubTask(prev => {
+            if (!prev) return null;
+            const currentDays = prev.specific_days || [];
+            const newDays = currentDays.includes(dayId)
+                ? currentDays.filter(d => d !== dayId)
+                : [...currentDays, dayId];
+            return { ...prev, specific_days: newDays.sort((a,b) => a-b) };
+        });
+    } else {
+        setCurrentSubTaskSpecificDays(prev => {
+            const newDays = prev.includes(dayId)
+                ? prev.filter(d => d !== dayId)
+                : [...prev, dayId];
+            return newDays.sort((a,b) => a-b);
+        });
+    }
+  };
+
+
   const handleTagAdd = (tagText: string) => {
     const newTag = tagText.trim();
     if (newTag && !taskData.tags.includes(newTag) && taskData.tags.length < 10) {
@@ -108,25 +138,25 @@ export const TaskForm: React.FC<FormComponentProps<ManagedTask> & { globalTagDef
 
   const handleAddSubTask = () => {
     const title = currentSubTaskTitle.trim();
-    if (!title) {
-        // Optionally, provide feedback if the title is empty, or just return.
-        // For now, let's assume if title is empty, nothing happens.
+    if (!title) return;
+
+    if (currentSubTaskCategory === TaskResetCategory.SPECIFIC_HOURS && (!currentSubTaskHours || currentSubTaskHours <= 0)) {
+        alert("For 'Specific Hours' sub-task category, 'Hours' must be a positive number.");
+        return;
+    }
+    if (currentSubTaskCategory === TaskResetCategory.SPECIFIC_DAY && currentSubTaskSpecificDays.length === 0) {
+        alert("For 'Specific Day' sub-task category, at least one day must be selected.");
         return;
     }
 
-    // Explicit validation for SPECIFIC_HOURS category when adding a sub-task
-    if (currentSubTaskCategory === TaskResetCategory.SPECIFIC_HOURS && (!currentSubTaskHours || currentSubTaskHours <= 0)) {
-        alert("For 'Specific Hours' category, 'Hours' for the sub-task must be a positive number.");
-        return; // Prevent adding sub-task
-    }
 
     let nextResetTimeSubTask: string | null = null;
     if (currentSubTaskCategory) {
         nextResetTimeSubTask = toSupabaseDate(calculateNextResetTimestamp(
             currentSubTaskCategory, 
-            undefined, // Sub-tasks don't use specific_reset_days
+            currentSubTaskCategory === TaskResetCategory.SPECIFIC_DAY ? currentSubTaskSpecificDays : undefined,
             Date.now(), 
-            false, // Not completed initially
+            false, 
             currentSubTaskCategory === TaskResetCategory.SPECIFIC_HOURS ? currentSubTaskHours : undefined
         ));
     }
@@ -136,6 +166,7 @@ export const TaskForm: React.FC<FormComponentProps<ManagedTask> & { globalTagDef
         isCompleted: false, 
         category: currentSubTaskCategory,
         specific_reset_hours: currentSubTaskCategory === TaskResetCategory.SPECIFIC_HOURS ? currentSubTaskHours : null,
+        specific_reset_days: currentSubTaskCategory === TaskResetCategory.SPECIFIC_DAY ? currentSubTaskSpecificDays : [],
         last_completion_timestamp: null,
         next_reset_timestamp: nextResetTimeSubTask,
     };
@@ -146,6 +177,7 @@ export const TaskForm: React.FC<FormComponentProps<ManagedTask> & { globalTagDef
     setCurrentSubTaskTitle('');
     setCurrentSubTaskCategory("");
     setCurrentSubTaskHours(null);
+    setCurrentSubTaskSpecificDays([]);
   };
 
   const handleRemoveSubTask = (indexToRemove: number) => {
@@ -165,24 +197,37 @@ export const TaskForm: React.FC<FormComponentProps<ManagedTask> & { globalTagDef
         title: subTask.title, 
         category: subTask.category || "",
         hours: subTask.specific_reset_hours || null,
+        specific_days: subTask.specific_reset_days || [],
     });
   };
 
   const handleSaveEditedSubTask = () => {
     if (editingSubTask && editingSubTask.title.trim()) {
+      if (editingSubTask.category === TaskResetCategory.SPECIFIC_HOURS && (!editingSubTask.hours || editingSubTask.hours <= 0)) {
+          alert("For 'Specific Hours' sub-task category, 'Hours' must be a positive number.");
+          return;
+      }
+      if (editingSubTask.category === TaskResetCategory.SPECIFIC_DAY && (!editingSubTask.specific_days || editingSubTask.specific_days.length === 0)) {
+          alert("For 'Specific Day' sub-task category, at least one day must be selected.");
+          return;
+      }
+
       const updatedSubTasks = [...(taskData.sub_tasks || [])];
       const subTaskToUpdate = updatedSubTasks[editingSubTask.index];
 
       subTaskToUpdate.title = editingSubTask.title.trim();
       const oldCategory = subTaskToUpdate.category;
       const oldHours = subTaskToUpdate.specific_reset_hours;
+      const oldSpecificDays = subTaskToUpdate.specific_reset_days;
 
       subTaskToUpdate.category = editingSubTask.category;
       subTaskToUpdate.specific_reset_hours = editingSubTask.category === TaskResetCategory.SPECIFIC_HOURS ? editingSubTask.hours : null;
+      subTaskToUpdate.specific_reset_days = editingSubTask.category === TaskResetCategory.SPECIFIC_DAY ? editingSubTask.specific_days : [];
 
 
       if (oldCategory !== editingSubTask.category || 
           (editingSubTask.category === TaskResetCategory.SPECIFIC_HOURS && oldHours !== editingSubTask.hours) ||
+          (editingSubTask.category === TaskResetCategory.SPECIFIC_DAY && JSON.stringify(oldSpecificDays) !== JSON.stringify(editingSubTask.specific_days)) ||
           (editingSubTask.category && !subTaskToUpdate.next_reset_timestamp)) { 
           
           if (editingSubTask.category) {
@@ -190,14 +235,13 @@ export const TaskForm: React.FC<FormComponentProps<ManagedTask> & { globalTagDef
               if (subTaskToUpdate.isCompleted && subTaskToUpdate.last_completion_timestamp) {
                   const parsedTs = parseSupabaseDate(subTaskToUpdate.last_completion_timestamp);
                   baseTimestampForCalc = parsedTs !== undefined ? parsedTs : Date.now();
-                  if (parsedTs === undefined) console.warn(`Invalid last_completion_timestamp for subtask edit: ${subTaskToUpdate.title}. Defaulting to now.`);
               } else {
                   baseTimestampForCalc = Date.now();
               }
               
               subTaskToUpdate.next_reset_timestamp = toSupabaseDate(calculateNextResetTimestamp(
                   editingSubTask.category, 
-                  undefined, 
+                  editingSubTask.category === TaskResetCategory.SPECIFIC_DAY ? editingSubTask.specific_days : undefined, 
                   baseTimestampForCalc, 
                   subTaskToUpdate.isCompleted,
                   editingSubTask.category === TaskResetCategory.SPECIFIC_HOURS ? editingSubTask.hours : undefined
@@ -206,6 +250,7 @@ export const TaskForm: React.FC<FormComponentProps<ManagedTask> & { globalTagDef
               subTaskToUpdate.next_reset_timestamp = null;
               subTaskToUpdate.last_completion_timestamp = null;
               subTaskToUpdate.specific_reset_hours = null;
+              subTaskToUpdate.specific_reset_days = [];
           }
       }
       
@@ -230,6 +275,10 @@ export const TaskForm: React.FC<FormComponentProps<ManagedTask> & { globalTagDef
         alert("Please enter a valid number of hours (greater than 0) for the 'Specific Hours' category.");
         return;
     }
+     if (taskData.category === TaskResetCategory.SPECIFIC_DAY && (!taskData.specific_reset_days || taskData.specific_reset_days.length === 0)) {
+        alert("Please select at least one day for the 'Specific Day' category.");
+        return;
+    }
     if (editingSubTask) {
         alert("Please save or cancel the sub-task you are currently editing before saving the main task.");
         return;
@@ -249,6 +298,7 @@ export const TaskForm: React.FC<FormComponentProps<ManagedTask> & { globalTagDef
           ...st, 
           category: st.category || undefined, 
           specific_reset_hours: st.category === TaskResetCategory.SPECIFIC_HOURS ? st.specific_reset_hours : null,
+          specific_reset_days: st.category === TaskResetCategory.SPECIFIC_DAY ? st.specific_reset_days : [],
           last_completion_timestamp: st.last_completion_timestamp,
           next_reset_timestamp: st.next_reset_timestamp,
       })),
@@ -266,6 +316,23 @@ export const TaskForm: React.FC<FormComponentProps<ManagedTask> & { globalTagDef
     const found = globalTagDefinitions.find(gtd => gtd.text === tagText);
     return found ? found.colorClasses : DEFAULT_TAG_COLOR;
   }
+
+  const isSaveDisabled = () => {
+    if (editingSubTask) {
+        if (editingSubTask.category === TaskResetCategory.SPECIFIC_HOURS && (!editingSubTask.hours || editingSubTask.hours <= 0)) return true;
+        if (editingSubTask.category === TaskResetCategory.SPECIFIC_DAY && (!editingSubTask.specific_days || editingSubTask.specific_days.length === 0)) return true;
+        return false; // No, can save subtask
+    }
+    if (taskData.category === TaskResetCategory.SPECIFIC_HOURS && (!taskData.specific_reset_hours || taskData.specific_reset_hours <= 0)) return true;
+    if (taskData.category === TaskResetCategory.SPECIFIC_DAY && (!taskData.specific_reset_days || taskData.specific_reset_days.length === 0)) return true;
+    
+    if (currentSubTaskTitle.trim() !== '') { // If adding a new sub-task
+        if (currentSubTaskCategory === TaskResetCategory.SPECIFIC_HOURS && (!currentSubTaskHours || currentSubTaskHours <= 0)) return true;
+        if (currentSubTaskCategory === TaskResetCategory.SPECIFIC_DAY && currentSubTaskSpecificDays.length === 0) return true;
+    }
+    return false;
+  };
+
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={existingTask ? "Edit Task" : "Add New Task"} size="lg">
@@ -306,6 +373,9 @@ export const TaskForm: React.FC<FormComponentProps<ManagedTask> & { globalTagDef
                 placeholder="e.g., 3 for every 3 hours"
                 className="mt-1 block w-full bg-base-200 border border-base-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm" 
             />
+             {(!taskData.specific_reset_hours || taskData.specific_reset_hours <= 0) && (
+                <p className="text-xs text-error mt-1">Hours must be a positive number.</p>
+            )}
           </div>
         )}
 
@@ -325,6 +395,9 @@ export const TaskForm: React.FC<FormComponentProps<ManagedTask> & { globalTagDef
                 </label>
               ))}
             </div>
+             {(!taskData.specific_reset_days || taskData.specific_reset_days.length === 0) && (
+                <p className="text-xs text-error mt-1">At least one day must be selected.</p>
+            )}
           </div>
         )}
         <div>
@@ -369,27 +442,30 @@ export const TaskForm: React.FC<FormComponentProps<ManagedTask> & { globalTagDef
             </div>
         </div>
 
+        {/* Sub-tasks Section */}
         <div className="pt-4 border-t border-base-300">
             <h3 className="text-md font-semibold text-base-content mb-2">Sub-tasks (titles/descriptions can use [text](url) format)</h3>
             <div className="space-y-3">
                 {(taskData.sub_tasks || []).map((subTask, index) => (
                     <div key={index} className={`p-3 rounded-md border ${editingSubTask?.index === index ? 'bg-base-300/50 border-primary' : 'bg-base-100/70 border-base-300/70'}`}>
                         {editingSubTask?.index === index ? (
+                            // Editing Sub-task Form
                             <div className="space-y-2">
                                 <textarea
                                     value={editingSubTask.title}
                                     onChange={(e) => setEditingSubTask({ ...editingSubTask!, title: e.target.value })}
                                     onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSaveEditedSubTask(); } else if (e.key === 'Escape') { handleCancelEditSubTask();}}}
                                     className="block w-full bg-base-100 border border-primary rounded-md shadow-sm py-1.5 px-2 focus:outline-none focus:ring-1 focus:ring-primary sm:text-sm"
-                                    rows={2}
-                                    autoFocus
-                                    placeholder="Sub-task title/description"
+                                    rows={2} autoFocus placeholder="Sub-task title/description"
                                 />
                                  <select 
                                     value={editingSubTask.category} 
                                     onChange={(e) => {
                                         const newCat = e.target.value as TaskResetCategory | "";
-                                        setEditingSubTask({...editingSubTask!, category: newCat, hours: newCat === TaskResetCategory.SPECIFIC_HOURS ? editingSubTask!.hours : null });
+                                        setEditingSubTask({...editingSubTask!, category: newCat, 
+                                            hours: newCat === TaskResetCategory.SPECIFIC_HOURS ? editingSubTask!.hours : null,
+                                            specific_days: newCat === TaskResetCategory.SPECIFIC_DAY ? (editingSubTask!.specific_days || []) : []
+                                        });
                                     }}
                                     className="block w-full bg-base-100 border border-primary rounded-md shadow-sm py-1.5 px-2 focus:outline-none focus:ring-1 focus:ring-primary sm:text-sm appearance-none text-xs"
                                 >
@@ -401,21 +477,35 @@ export const TaskForm: React.FC<FormComponentProps<ManagedTask> & { globalTagDef
                                         type="number" 
                                         value={editingSubTask.hours || ''} 
                                         onChange={(e) => setEditingSubTask({...editingSubTask!, hours: e.target.value ? parseInt(e.target.value, 10) : null})}
-                                        min="1"
-                                        placeholder="e.g., 3 (hours)"
+                                        min="1" placeholder="e.g., 3 (hours)"
                                         className="block w-full bg-base-100 border border-primary rounded-md shadow-sm py-1.5 px-2 focus:outline-none focus:ring-1 focus:ring-primary sm:text-sm text-xs" 
                                     />
                                 )}
+                                {editingSubTask.category === TaskResetCategory.SPECIFIC_HOURS && (!editingSubTask.hours || editingSubTask.hours <=0) && (
+                                    <p className="text-xs text-error">Hours must be a positive number.</p>
+                                )}
+                                {editingSubTask.category === TaskResetCategory.SPECIFIC_DAY && (
+                                    <div className="space-y-1">
+                                      <div className="grid grid-cols-3 sm:grid-cols-4 gap-1 mt-1">
+                                          {WeekDays.map(day => (
+                                              <label key={`edit-subtask-day-${day.id}`} className="flex items-center space-x-1 p-1 bg-base-100/50 border border-primary/50 rounded-md hover:bg-primary/10 cursor-pointer text-xs">
+                                                  <input type="checkbox" checked={(editingSubTask.specific_days || []).includes(day.id)} onChange={() => handleSubTaskDayToggle(day.id, true)} className="form-checkbox h-3 w-3 text-primary rounded border-neutral-focus focus:ring-primary"/>
+                                                  <span>{day.name.substring(0,3)}</span>
+                                              </label>
+                                          ))}
+                                      </div>
+                                      {(!editingSubTask.specific_days || editingSubTask.specific_days.length === 0) && (
+                                        <p className="text-xs text-error">At least one day must be selected.</p>
+                                      )}
+                                    </div>
+                                )}
                                 <div className="flex gap-2 justify-end">
-                                    <button type="button" onClick={handleSaveEditedSubTask} className="p-1.5 text-success hover:text-success-focus focus:outline-none rounded-md bg-base-200 hover:bg-success/20" title="Save Sub-task">
-                                        <SaveIcon className="w-5 h-5"/>
-                                    </button>
-                                    <button type="button" onClick={handleCancelEditSubTask} className="p-1.5 text-neutral-content hover:opacity-70 focus:outline-none rounded-md bg-base-200 hover:bg-neutral/30" title="Cancel Edit">
-                                        <CancelIcon className="w-5 h-5"/>
-                                    </button>
+                                    <button type="button" onClick={handleSaveEditedSubTask} className="p-1.5 text-success hover:text-success-focus focus:outline-none rounded-md bg-base-200 hover:bg-success/20" title="Save Sub-task"><SaveIcon className="w-5 h-5"/></button>
+                                    <button type="button" onClick={handleCancelEditSubTask} className="p-1.5 text-neutral-content hover:opacity-70 focus:outline-none rounded-md bg-base-200 hover:bg-neutral/30" title="Cancel Edit"><CancelIcon className="w-5 h-5"/></button>
                                 </div>
                             </div>
                         ) : (
+                            // Displaying Sub-task
                             <div className="flex items-start justify-between">
                                 <div className="text-sm text-base-content-secondary flex-grow pr-2">
                                   <p className="whitespace-pre-wrap break-all">{subTask.title}</p>
@@ -423,22 +513,22 @@ export const TaskForm: React.FC<FormComponentProps<ManagedTask> & { globalTagDef
                                     <p className="text-xs text-base-content-secondary/70 mt-0.5">
                                         {subTask.category}
                                         {subTask.category === TaskResetCategory.SPECIFIC_HOURS && subTask.specific_reset_hours && ` (Every ${subTask.specific_reset_hours}h)`}
+                                        {subTask.category === TaskResetCategory.SPECIFIC_DAY && subTask.specific_reset_days && subTask.specific_reset_days.length > 0 && 
+                                            ` (${subTask.specific_reset_days.map(d => WeekDays.find(wd => wd.id === d)?.name.substring(0,3)).filter(Boolean).join(', ')})`
+                                        }
                                     </p>
                                   )}
                                 </div>
                                 <div className="flex gap-1 flex-shrink-0">
-                                    <button type="button" onClick={() => handleEditSubTask(index)} className="p-1 text-secondary hover:text-secondary-focus focus:outline-none" title="Edit Sub-task">
-                                        <PencilSquareIcon className="w-4 h-4"/>
-                                    </button>
-                                    <button type="button" onClick={() => handleRemoveSubTask(index)} className="p-1 text-error hover:text-error-focus focus:outline-none" title="Remove Sub-task">
-                                        <TrashIcon className="w-4 h-4"/>
-                                    </button>
+                                    <button type="button" onClick={() => handleEditSubTask(index)} className="p-1 text-secondary hover:text-secondary-focus focus:outline-none" title="Edit Sub-task"><PencilSquareIcon className="w-4 h-4"/></button>
+                                    <button type="button" onClick={() => handleRemoveSubTask(index)} className="p-1 text-error hover:text-error-focus focus:outline-none" title="Remove Sub-task"><TrashIcon className="w-4 h-4"/></button>
                                 </div>
                             </div>
                         )}
                     </div>
                 ))}
             </div>
+             {/* Add New Sub-task Form */}
             {editingSubTask === null && (
               <div className="mt-4 p-3 border border-dashed border-base-300 rounded-md space-y-2">
                   <textarea
@@ -449,38 +539,59 @@ export const TaskForm: React.FC<FormComponentProps<ManagedTask> & { globalTagDef
                       className="block w-full bg-base-200 border border-base-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
                       rows={2}
                   />
-                  <div className="flex flex-col sm:flex-row gap-2 items-center">
-                    <select 
-                        value={currentSubTaskCategory} 
-                        onChange={(e) => {
-                            const newCat = e.target.value as TaskResetCategory | "";
-                            setCurrentSubTaskCategory(newCat);
-                            if (newCat !== TaskResetCategory.SPECIFIC_HOURS) {
-                                setCurrentSubTaskHours(null);
-                            }
-                        }}
-                        className="flex-grow w-full sm:w-auto bg-base-200 border border-base-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm appearance-none text-xs"
+                  <div className="flex flex-col sm:flex-row gap-2 items-start">
+                    <div className="flex-grow w-full space-y-1.5">
+                        <select 
+                            value={currentSubTaskCategory} 
+                            onChange={(e) => {
+                                const newCat = e.target.value as TaskResetCategory | "";
+                                setCurrentSubTaskCategory(newCat);
+                                if (newCat !== TaskResetCategory.SPECIFIC_HOURS) setCurrentSubTaskHours(null);
+                                if (newCat !== TaskResetCategory.SPECIFIC_DAY) setCurrentSubTaskSpecificDays([]);
+                            }}
+                            className="w-full bg-base-200 border border-base-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm appearance-none text-xs"
+                        >
+                            <option value="">No Category (Resets with Parent)</option>
+                            {Object.values(TaskResetCategory).map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                        </select>
+                        {currentSubTaskCategory === TaskResetCategory.SPECIFIC_HOURS && (
+                            <input
+                                type="number" value={currentSubTaskHours || ''}
+                                onChange={(e) => setCurrentSubTaskHours(e.target.value ? parseInt(e.target.value, 10) : null)}
+                                min="1" placeholder="Hours (e.g., 3)"
+                                className="w-full bg-base-200 border border-base-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm text-xs"
+                            />
+                        )}
+                         {currentSubTaskCategory === TaskResetCategory.SPECIFIC_HOURS && currentSubTaskTitle.trim() !== '' && (!currentSubTaskHours || currentSubTaskHours <=0) && (
+                            <p className="text-xs text-error">Hours must be a positive number.</p>
+                        )}
+                        {currentSubTaskCategory === TaskResetCategory.SPECIFIC_DAY && (
+                             <div className="space-y-1">
+                                <div className="grid grid-cols-3 sm:grid-cols-4 gap-1 mt-1">
+                                    {WeekDays.map(day => (
+                                        <label key={`add-subtask-day-${day.id}`} className="flex items-center space-x-1 p-1 bg-base-200 border border-base-300 rounded-md hover:bg-primary/10 cursor-pointer text-xs">
+                                            <input type="checkbox" checked={currentSubTaskSpecificDays.includes(day.id)} onChange={() => handleSubTaskDayToggle(day.id, false)} className="form-checkbox h-3 w-3 text-primary rounded border-neutral-focus focus:ring-primary"/>
+                                            <span>{day.name.substring(0,3)}</span>
+                                        </label>
+                                    ))}
+                                </div>
+                                {currentSubTaskCategory === TaskResetCategory.SPECIFIC_DAY && currentSubTaskTitle.trim() !== '' && currentSubTaskSpecificDays.length === 0 && (
+                                    <p className="text-xs text-error">At least one day must be selected.</p>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                    <button 
+                        type="button" onClick={handleAddSubTask} 
+                        className="w-full mt-2 sm:mt-0 sm:w-auto sm:flex-shrink-0 bg-secondary text-white px-3 py-2 rounded-md hover:bg-secondary-focus flex items-center justify-center focus:outline-none text-sm self-start"
+                        disabled={
+                            (currentSubTaskCategory === TaskResetCategory.SPECIFIC_HOURS && (!currentSubTaskHours || currentSubTaskHours <=0)) ||
+                            (currentSubTaskCategory === TaskResetCategory.SPECIFIC_DAY && currentSubTaskSpecificDays.length === 0)
+                        }
                     >
-                        <option value="">No Category (Resets with Parent)</option>
-                        {Object.values(TaskResetCategory).map(cat => <option key={cat} value={cat}>{cat}</option>)}
-                    </select>
-                    {currentSubTaskCategory === TaskResetCategory.SPECIFIC_HOURS && (
-                        <input
-                            type="number"
-                            value={currentSubTaskHours || ''}
-                            onChange={(e) => setCurrentSubTaskHours(e.target.value ? parseInt(e.target.value, 10) : null)}
-                            min="1"
-                            placeholder="Hours"
-                            className="w-full sm:w-20 bg-base-200 border border-base-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm text-xs"
-                        />
-                    )}
-                    <button type="button" onClick={handleAddSubTask} className="w-full sm:w-auto bg-secondary text-white px-3 py-2 rounded-md hover:bg-secondary-focus flex items-center justify-center focus:outline-none text-sm">
                         <PlusCircleIcon className="w-4 h-4 mr-1 sm:mr-0 md:mr-1"/> <span className="hidden sm:inline md:hidden lg:inline">Add</span>
                     </button>
                   </div>
-                  {currentSubTaskCategory === TaskResetCategory.SPECIFIC_HOURS && (!currentSubTaskHours || currentSubTaskHours <=0) && currentSubTaskTitle.trim() !== '' && (
-                    <p className="text-xs text-error mt-1">Hours must be greater than 0 for 'Specific Hours' category.</p>
-                  )}
               </div>
             )}
             {(taskData.sub_tasks || []).length === 0 && editingSubTask === null && (
@@ -493,13 +604,8 @@ export const TaskForm: React.FC<FormComponentProps<ManagedTask> & { globalTagDef
           <button 
             type="submit" 
             className="px-4 py-2 bg-primary text-white rounded-md text-sm font-medium hover:bg-primary-focus focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-focus" 
-            disabled={
-                editingSubTask !== null || 
-                (taskData.category === TaskResetCategory.SPECIFIC_HOURS && (!taskData.specific_reset_hours || taskData.specific_reset_hours <= 0)) ||
-                (editingSubTask?.category === TaskResetCategory.SPECIFIC_HOURS && (!editingSubTask.hours || editingSubTask.hours <=0)) ||
-                (currentSubTaskCategory === TaskResetCategory.SPECIFIC_HOURS && currentSubTaskTitle.trim() !== '' && (!currentSubTaskHours || currentSubTaskHours <=0))
-
-            }>
+            disabled={isSaveDisabled()}
+          >
             {editingSubTask !== null ? "Save Task (Complete Sub-task Edit First)" : (existingTask ? "Save Changes" : "Add Task")}
           </button>
         </div>
