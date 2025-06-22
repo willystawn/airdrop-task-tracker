@@ -73,7 +73,7 @@ export const FeatureManagementPage: React.FC<FeatureManagementPageProps> = ({
       const searchTextLower = filters.searchText.toLowerCase();
       processedTasks = processedTasks.filter(task =>
         task.title.toLowerCase().includes(searchTextLower) ||
-        task.description.toLowerCase().includes(searchTextLower)
+        (task.description && task.description.toLowerCase().includes(searchTextLower))
       );
     }
     if (filters.category) {
