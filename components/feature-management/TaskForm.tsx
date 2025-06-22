@@ -429,7 +429,7 @@ export const TaskForm: React.FC<FormComponentProps<ManagedTask> & { globalTagDef
             <div className="mt-2 flex flex-wrap gap-1">
                 {globalTagDefinitions
                     .filter(gtd => !taskData.tags.includes(gtd.text) && taskData.tags.length < 10)
-                    .slice(0, 10) 
+                    // .slice(0, 10) 
                     .map(gtd => (
                         <Tag
                             key={gtd.text}
