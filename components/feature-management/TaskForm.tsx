@@ -1,3 +1,5 @@
+
+
 import React, { useState, useEffect } from 'react';
 import { ManagedTask, TaskResetCategory, WeekDays, FormComponentProps, SubTask, GlobalTag } from '../../types';
 import { Modal } from '../shared/Modal';
@@ -50,7 +52,7 @@ export const TaskForm: React.FC<FormComponentProps<ManagedTask> & { globalTagDef
         title: existingTask.title,
         description: existingTask.description,
         logo_url: existingTask.logo_url || '',
-        is_completed: existingTask.is_completed, 
+        is_completed: existingTask.category === TaskResetCategory.ENDED ? true : existingTask.is_completed, 
         category: existingTask.category,
         specific_reset_days: existingTask.specific_reset_days || [],
         specific_reset_hours: existingTask.specific_reset_hours || null,
@@ -59,9 +61,10 @@ export const TaskForm: React.FC<FormComponentProps<ManagedTask> & { globalTagDef
             ...st, 
             category: st.category || "",
             specific_reset_hours: st.specific_reset_hours || null,
-            specific_reset_days: st.specific_reset_days || [], // Ensure default
+            specific_reset_days: st.specific_reset_days || [], 
             last_completion_timestamp: st.last_completion_timestamp,
             next_reset_timestamp: st.next_reset_timestamp,
+            isCompleted: st.category === TaskResetCategory.ENDED ? true : st.isCompleted,
         })),
       });
     } else if (!existingTask && isOpen) { 
@@ -87,6 +90,7 @@ export const TaskForm: React.FC<FormComponentProps<ManagedTask> & { globalTagDef
             category: newCategory,
             specific_reset_days: newCategory === TaskResetCategory.SPECIFIC_DAY ? prev.specific_reset_days : [],
             specific_reset_hours: newCategory === TaskResetCategory.SPECIFIC_HOURS ? prev.specific_reset_hours : null,
+            is_completed: newCategory === TaskResetCategory.ENDED ? true : prev.is_completed,
         }));
     } else {
         setTaskData(prev => ({ ...prev, [name]: value }));
@@ -151,7 +155,7 @@ export const TaskForm: React.FC<FormComponentProps<ManagedTask> & { globalTagDef
 
 
     let nextResetTimeSubTask: string | null = null;
-    if (currentSubTaskCategory) {
+    if (currentSubTaskCategory && currentSubTaskCategory !== TaskResetCategory.ENDED) {
         nextResetTimeSubTask = toSupabaseDate(calculateNextResetTimestamp(
             currentSubTaskCategory, 
             currentSubTaskCategory === TaskResetCategory.SPECIFIC_DAY ? currentSubTaskSpecificDays : undefined,
@@ -163,12 +167,12 @@ export const TaskForm: React.FC<FormComponentProps<ManagedTask> & { globalTagDef
 
     const newSubTask: SubTask = { 
         title, 
-        isCompleted: false, 
+        isCompleted: currentSubTaskCategory === TaskResetCategory.ENDED ? true : false, 
         category: currentSubTaskCategory,
         specific_reset_hours: currentSubTaskCategory === TaskResetCategory.SPECIFIC_HOURS ? currentSubTaskHours : null,
         specific_reset_days: currentSubTaskCategory === TaskResetCategory.SPECIFIC_DAY ? currentSubTaskSpecificDays : [],
-        last_completion_timestamp: null,
-        next_reset_timestamp: nextResetTimeSubTask,
+        last_completion_timestamp: currentSubTaskCategory === TaskResetCategory.ENDED ? null : undefined,
+        next_reset_timestamp: currentSubTaskCategory === TaskResetCategory.ENDED ? null : nextResetTimeSubTask,
     };
     setTaskData(prev => ({
         ...prev,
@@ -223,9 +227,14 @@ export const TaskForm: React.FC<FormComponentProps<ManagedTask> & { globalTagDef
       subTaskToUpdate.category = editingSubTask.category;
       subTaskToUpdate.specific_reset_hours = editingSubTask.category === TaskResetCategory.SPECIFIC_HOURS ? editingSubTask.hours : null;
       subTaskToUpdate.specific_reset_days = editingSubTask.category === TaskResetCategory.SPECIFIC_DAY ? editingSubTask.specific_days : [];
+      subTaskToUpdate.isCompleted = editingSubTask.category === TaskResetCategory.ENDED ? true : subTaskToUpdate.isCompleted; // Keep existing if not ended
 
-
-      if (oldCategory !== editingSubTask.category || 
+      if (editingSubTask.category === TaskResetCategory.ENDED) {
+          subTaskToUpdate.next_reset_timestamp = null;
+          subTaskToUpdate.last_completion_timestamp = null;
+          subTaskToUpdate.specific_reset_hours = null;
+          subTaskToUpdate.specific_reset_days = [];
+      } else if (oldCategory !== editingSubTask.category || 
           (editingSubTask.category === TaskResetCategory.SPECIFIC_HOURS && oldHours !== editingSubTask.hours) ||
           (editingSubTask.category === TaskResetCategory.SPECIFIC_DAY && JSON.stringify(oldSpecificDays) !== JSON.stringify(editingSubTask.specific_days)) ||
           (editingSubTask.category && !subTaskToUpdate.next_reset_timestamp)) { 
@@ -292,15 +301,17 @@ export const TaskForm: React.FC<FormComponentProps<ManagedTask> & { globalTagDef
       next_reset_timestamp: existingTask?.next_reset_timestamp, 
       last_completion_timestamp: existingTask?.last_completion_timestamp, 
       ...taskData, 
+      is_completed: taskData.category === TaskResetCategory.ENDED ? true : taskData.is_completed,
       specific_reset_days: taskData.category === TaskResetCategory.SPECIFIC_DAY ? taskData.specific_reset_days : [],
       specific_reset_hours: taskData.category === TaskResetCategory.SPECIFIC_HOURS ? taskData.specific_reset_hours : null,
       sub_tasks: (taskData.sub_tasks || []).map(st => ({
           ...st, 
+          isCompleted: st.category === TaskResetCategory.ENDED ? true : st.isCompleted,
           category: st.category || undefined, 
           specific_reset_hours: st.category === TaskResetCategory.SPECIFIC_HOURS ? st.specific_reset_hours : null,
           specific_reset_days: st.category === TaskResetCategory.SPECIFIC_DAY ? st.specific_reset_days : [],
-          last_completion_timestamp: st.last_completion_timestamp,
-          next_reset_timestamp: st.next_reset_timestamp,
+          last_completion_timestamp: st.category === TaskResetCategory.ENDED ? null : st.last_completion_timestamp,
+          next_reset_timestamp: st.category === TaskResetCategory.ENDED ? null : st.next_reset_timestamp,
       })),
     };
     try {
@@ -321,12 +332,12 @@ export const TaskForm: React.FC<FormComponentProps<ManagedTask> & { globalTagDef
     if (editingSubTask) {
         if (editingSubTask.category === TaskResetCategory.SPECIFIC_HOURS && (!editingSubTask.hours || editingSubTask.hours <= 0)) return true;
         if (editingSubTask.category === TaskResetCategory.SPECIFIC_DAY && (!editingSubTask.specific_days || editingSubTask.specific_days.length === 0)) return true;
-        return false; // No, can save subtask
+        return false; 
     }
     if (taskData.category === TaskResetCategory.SPECIFIC_HOURS && (!taskData.specific_reset_hours || taskData.specific_reset_hours <= 0)) return true;
     if (taskData.category === TaskResetCategory.SPECIFIC_DAY && (!taskData.specific_reset_days || taskData.specific_reset_days.length === 0)) return true;
     
-    if (currentSubTaskTitle.trim() !== '') { // If adding a new sub-task
+    if (currentSubTaskTitle.trim() !== '') { 
         if (currentSubTaskCategory === TaskResetCategory.SPECIFIC_HOURS && (!currentSubTaskHours || currentSubTaskHours <= 0)) return true;
         if (currentSubTaskCategory === TaskResetCategory.SPECIFIC_DAY && currentSubTaskSpecificDays.length === 0) return true;
     }
@@ -429,7 +440,6 @@ export const TaskForm: React.FC<FormComponentProps<ManagedTask> & { globalTagDef
             <div className="mt-2 flex flex-wrap gap-1">
                 {globalTagDefinitions
                     .filter(gtd => !taskData.tags.includes(gtd.text) && taskData.tags.length < 10)
-                    // .slice(0, 10) 
                     .map(gtd => (
                         <Tag
                             key={gtd.text}
@@ -508,7 +518,7 @@ export const TaskForm: React.FC<FormComponentProps<ManagedTask> & { globalTagDef
                             // Displaying Sub-task
                             <div className="flex items-start justify-between">
                                 <div className="text-sm text-base-content-secondary flex-grow pr-2">
-                                  <p className="whitespace-pre-wrap break-all">{subTask.title}</p>
+                                  <p className={`whitespace-pre-wrap break-all ${subTask.category === TaskResetCategory.ENDED ? 'line-through' : ''}`}>{subTask.title}</p>
                                   {subTask.category && (
                                     <p className="text-xs text-base-content-secondary/70 mt-0.5">
                                         {subTask.category}
@@ -585,6 +595,7 @@ export const TaskForm: React.FC<FormComponentProps<ManagedTask> & { globalTagDef
                         type="button" onClick={handleAddSubTask} 
                         className="w-full mt-2 sm:mt-0 sm:w-auto sm:flex-shrink-0 bg-secondary text-white px-3 py-2 rounded-md hover:bg-secondary-focus flex items-center justify-center focus:outline-none text-sm self-start"
                         disabled={
+                            currentSubTaskTitle.trim() === '' ||
                             (currentSubTaskCategory === TaskResetCategory.SPECIFIC_HOURS && (!currentSubTaskHours || currentSubTaskHours <=0)) ||
                             (currentSubTaskCategory === TaskResetCategory.SPECIFIC_DAY && currentSubTaskSpecificDays.length === 0)
                         }

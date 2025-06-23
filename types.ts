@@ -5,6 +5,7 @@ export enum TaskResetCategory {
   WEEKLY_MONDAY = "Weekly (Monday)",
   SPECIFIC_DAY = "Specific Day",
   SPECIFIC_HOURS = "Specific Hours", // New Category
+  ENDED = "Ended", // New Category for tasks that are permanently completed
 }
 
 export const WeekDays = [

@@ -1,4 +1,5 @@
 
+
 # Airdrop Task Tracker (Sumber Rejeki)
 
 A web application designed to help users efficiently manage and track tasks related to cryptocurrency airdrops. It features various reset categories for tasks (daily, weekly, countdown, specific hours/days), sub-task management, customizable tags, and user-specific data powered by Supabase.
@@ -12,9 +13,10 @@ A web application designed to help users efficiently manage and track tasks rela
     *   Specific Hours countdown (e.g., every 3 hours from completion).
     *   Weekly resets (e.g., every Monday at midnight WIB).
     *   Specific day(s) of the week resets.
-*   **Sub-tasks**: Break down complex tasks into smaller, manageable steps, each with optional independent reset logic.
-*   **Completion Tracking**: Mark tasks and sub-tasks as complete/incomplete.
-*   **Next Reset Timers**: Visual countdowns for when tasks or sub-tasks will become available again.
+    *   **Ended**: Marks a task as permanently completed; it will not reset.
+*   **Sub-tasks**: Break down complex tasks into smaller, manageable steps, each with optional independent reset logic (including "Ended").
+*   **Completion Tracking**: Mark tasks and sub-tasks as complete/incomplete. "Ended" tasks are always complete.
+*   **Next Reset Timers**: Visual countdowns for when tasks or sub-tasks will become available again (not applicable for "Ended" tasks).
 *   **Customizable Tags**: Organize tasks with global, color-coded tags. Users can define their own tags.
 *   **Filtering & Sorting**:
     *   Filter tasks by category, tags, and search text.
@@ -125,7 +127,7 @@ A web application designed to help users efficiently manage and track tasks rela
             description TEXT,
             logo_url TEXT,
             is_completed BOOLEAN NOT NULL DEFAULT FALSE,
-            category TEXT NOT NULL, -- e.g., "Daily", "24h Countdown"
+            category TEXT NOT NULL, -- e.g., "Daily", "24h Countdown", "Ended"
             specific_reset_days INTEGER[], -- Array of day numbers (0-6 for Sun-Sat)
             specific_reset_hours INTEGER, -- e.g., 3 for every 3 hours
             last_completion_timestamp TIMESTAMPTZ,
@@ -147,8 +149,9 @@ A web application designed to help users efficiently manage and track tasks rela
         {
           "title": "string",
           "isCompleted": "boolean",
-          "category": "string (TaskResetCategory) | null",
+          "category": "string (TaskResetCategory) | null", // Can be "Ended"
           "specific_reset_hours": "number | null",
+          "specific_reset_days": "number[] | null",
           "last_completion_timestamp": "string (ISO timestamp) | null",
           "next_reset_timestamp": "string (ISO timestamp) | null"
         }
@@ -236,13 +239,13 @@ A web application designed to help users efficiently manage and track tasks rela
     *   For testing, you might need to manually create a user in your Supabase dashboard (Authentication -> Users -> Add User) and then ensure a corresponding entry exists in `public.profiles` (or rely on the `handle_new_user` trigger if you enabled Supabase Auth sign-ups). Then, copy the User ID (UUID) from the Supabase dashboard.
 
 2.  **Main Interface (Feature Management Page)**:
-    *   **Add New Task**: Click the "Add New Task" button. Fill in the details, including title, description, reset category, specific reset parameters (days/hours if applicable), tags, and sub-tasks.
+    *   **Add New Task**: Click the "Add New Task" button. Fill in the details, including title, description, reset category (including "Ended"), specific reset parameters (days/hours if applicable), tags, and sub-tasks.
     *   **Manage Tags**: Expand the "Manage Tags" section to add new global tags with randomly assigned colors or delete existing ones. These tags can then be applied to tasks.
     *   **Filtering and Sorting**: Use the controls to filter tasks by search term, category, or selected tags. Sort tasks by various criteria like creation date, title, or next reset time.
     *   **Task Interaction**:
-        *   Click the circle/check icon to toggle task completion.
+        *   Click the circle/check icon to toggle task completion (disabled for "Ended" tasks).
         *   Expand a task to see its description, sub-tasks, tags, and reset information.
-        *   Toggle sub-task completion individually.
+        *   Toggle sub-task completion individually (disabled for "Ended" sub-tasks).
         *   Edit or delete tasks using the icons that appear on hover.
     *   **Logout**: Click the logout icon to clear your session.
 

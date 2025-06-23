@@ -12,8 +12,8 @@ export function parseSupabaseDate(dateString?: string | null): number | undefine
 }
 
 // Fungsi untuk mengonversi number (milidetik) ke string ISO untuk Supabase
-export function toSupabaseDate(timestamp?: number): string | undefined {
-  if (!timestamp) return undefined;
+export function toSupabaseDate(timestamp?: number | null): string | undefined {
+  if (timestamp === undefined || timestamp === null) return undefined;
   return new Date(timestamp).toISOString();
 }
 
@@ -106,11 +106,14 @@ export function calculateNextResetTimestamp(
   baseTimestamp: number, // Biasanya Date.now() atau last_completion_timestamp (UTC)
   isTaskJustCompleted: boolean = false,
   specificResetHours?: number | null
-): number {
+): number | null { // Return type changed to number | null
   const baseDate = new Date(baseTimestamp); // Ini adalah UTC
   let nextResetDateUTC = new Date(baseTimestamp);
 
   switch (taskCategory) {
+    case TaskResetCategory.ENDED:
+      return null; // Ended tasks don't have a next reset
+
     case TaskResetCategory.DAILY:
       let midnightWIBToday = getMidnightWIB(baseDate);
       if (baseTimestamp >= midnightWIBToday.getTime() || isTaskJustCompleted) {
@@ -173,7 +176,7 @@ export function calculateNextResetTimestamp(
 }
 
 
-export function getInitialNextResetTimestamp(task: Omit<ManagedTask, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'next_reset_timestamp' | 'last_completion_timestamp' | 'sub_tasks' >): number {
+export function getInitialNextResetTimestamp(task: Omit<ManagedTask, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'next_reset_timestamp' | 'last_completion_timestamp' | 'sub_tasks' >): number | null {
     return calculateNextResetTimestamp(
         task.category,
         task.specific_reset_days,
