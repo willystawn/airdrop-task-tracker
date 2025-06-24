@@ -1,4 +1,5 @@
 
+
 import { TaskResetCategory, ManagedTask, WeekDays } from '../types';
 
 export function classNames(...classes: (string | undefined | null | false)[]): string {
@@ -92,11 +93,15 @@ export function formatTimeDifference(targetTimestamp?: number | string): string 
 
 
 // Fungsi helper untuk mendapatkan tanggal tengah malam di WIB
+// Input: a Date object (UTC timestamp)
+// Output: a Date object (UTC timestamp) representing 00:00:00 on the WIB day of the input date
 function getMidnightWIB(date: Date): Date {
   const wibYear = parseInt(date.toLocaleDateString('en-US', { year: 'numeric', timeZone: 'Asia/Jakarta' }));
   const wibMonth = parseInt(date.toLocaleDateString('en-US', { month: '2-digit', timeZone: 'Asia/Jakarta' })) - 1; // month is 0-indexed
   const wibDay = parseInt(date.toLocaleDateString('en-US', { day: '2-digit', timeZone: 'Asia/Jakarta' }));
-  return new Date(Date.UTC(wibYear, wibMonth, wibDay, -7, 0, 0)); // UTC 00:00:00 minus offset WIB (7 jam)
+  // Construct a new UTC Date object that represents 00:00:00 on that WIB date.
+  // WIB is UTC+7. So, WIB 00:00 is previous day 17:00 UTC.
+  return new Date(Date.UTC(wibYear, wibMonth, wibDay, -7, 0, 0, 0)); 
 }
 
 
@@ -107,23 +112,50 @@ export function calculateNextResetTimestamp(
   isTaskJustCompleted: boolean = false,
   specificResetHours?: number | null
 ): number | null { // Return type changed to number | null
-  const baseDate = new Date(baseTimestamp); // Ini adalah UTC
-  let nextResetDateUTC = new Date(baseTimestamp);
+  const baseDate = new Date(baseTimestamp); // This is UTC
+  let nextResetDateUTC: Date;
 
   switch (taskCategory) {
     case TaskResetCategory.ENDED:
       return null; // Ended tasks don't have a next reset
 
-    case TaskResetCategory.DAILY:
-      let midnightWIBToday = getMidnightWIB(baseDate);
-      if (baseTimestamp >= midnightWIBToday.getTime() || isTaskJustCompleted) {
-        const tomorrow = new Date(baseDate);
-        tomorrow.setDate(baseDate.getDate() + 1);
-        nextResetDateUTC = getMidnightWIB(tomorrow);
+    case TaskResetCategory.DAILY: {
+      // Determine the calendar date (Year, Month, Day) in WIB for the baseTimestamp.
+      const dateInWIB = new Date(baseTimestamp);
+      const wibYear = parseInt(dateInWIB.toLocaleDateString('en-US', { year: 'numeric', timeZone: 'Asia/Jakarta' }));
+      const wibMonth = parseInt(dateInWIB.toLocaleDateString('en-US', { month: '2-digit', timeZone: 'Asia/Jakarta' })) - 1; // JS months 0-11
+      const wibDay = parseInt(dateInWIB.toLocaleDateString('en-US', { day: '2-digit', timeZone: 'Asia/Jakarta' }));
+
+      // This is 00:00:00 on the WIB calendar day of baseTimestamp, expressed as a UTC Date object.
+      // (e.g., if baseTimestamp is 22 June (any time WIB), this is 22 June 00:00 WIB / 21 June 17:00 UTC)
+      const midnightOfWIBBaseDay = new Date(Date.UTC(wibYear, wibMonth, wibDay, -7, 0, 0, 0));
+
+      // Calculate 23:59:00 on that WIB calendar day.
+      let endOfWIBDayTarget = new Date(midnightOfWIBBaseDay.getTime());
+      endOfWIBDayTarget.setUTCHours(endOfWIBDayTarget.getUTCHours() + 23);
+      endOfWIBDayTarget.setUTCMinutes(endOfWIBDayTarget.getUTCMinutes() + 59);
+      // (e.g., if midnightOfWIBBaseDay is 22 June 00:00 WIB, endOfWIBDayTarget is 22 June 23:59 WIB)
+
+      if (isTaskJustCompleted) {
+        // Task was just completed. Next reset is 23:59:00 on the day of completion (WIB).
+        nextResetDateUTC = endOfWIBDayTarget;
       } else {
-        nextResetDateUTC = midnightWIBToday;
+        // Task is incomplete. We are calculating its current reset period or next one if today's passed.
+        if (baseTimestamp >= endOfWIBDayTarget.getTime()) {
+          // Current time (baseTimestamp) is at or after 23:59:00 of the current WIB day.
+          // So, the reset for "today" (WIB) has effectively passed.
+          // The relevant next reset for this incomplete task is for 23:59:00 of the *next* WIB day.
+          let endOfNextWIBDay = new Date(endOfWIBDayTarget.getTime());
+          endOfNextWIBDay.setUTCDate(endOfNextWIBDay.getUTCDate() + 1); // Handles month/year rollover
+          nextResetDateUTC = endOfNextWIBDay;
+        } else {
+          // Current time (baseTimestamp) is before 23:59:00 of the current WIB day.
+          // The task is available for completion "today" (WIB). Its reset point is 23:59:00 of today (WIB).
+          nextResetDateUTC = endOfWIBDayTarget;
+        }
       }
       break;
+    }
 
     case TaskResetCategory.COUNTDOWN_24H:
       return baseTimestamp + 24 * 60 * 60 * 1000;
@@ -132,7 +164,6 @@ export function calculateNextResetTimestamp(
       if (specificResetHours && specificResetHours > 0) {
         return baseTimestamp + specificResetHours * 60 * 60 * 1000;
       }
-      // Fallback if hours not set or invalid, treat like 24h countdown or a default
       console.warn(`Specific hours not set or invalid for SPECIFIC_HOURS category. Defaulting to 24h.`);
       return baseTimestamp + 24 * 60 * 60 * 1000;
 
@@ -148,17 +179,24 @@ export function calculateNextResetTimestamp(
       let closestNextReset = Infinity;
 
       for (const targetDay of targetDays) {
-          let candidateReset = getMidnightWIB(baseDate); 
-          const currentDayWIB = (new Date(baseDate.toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }))).getDay(); 
+          let candidateResetBaseDate = new Date(baseDate.toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
+          let candidateReset = getMidnightWIB(candidateResetBaseDate); // Midnight of the current WIB day of baseDate
+
+          const currentDayWIB = candidateResetBaseDate.getDay(); // Day of week in WIB (0 Sun - 6 Sat)
 
           let daysUntilTarget = (targetDay - currentDayWIB + 7) % 7;
 
           if (daysUntilTarget === 0 && (isTaskJustCompleted || baseTimestamp >= candidateReset.getTime())) {
+            // If target is today, but task was just completed OR current time is past today's midnight
+            // then we need to aim for the *next* occurrence of this target day (i.e., 7 days later).
             daysUntilTarget = 7; 
           }
           
-          let tempCalcDate = new Date(baseDate.getTime()); 
+          // Calculate the actual date for the reset
+          let tempCalcDate = new Date(candidateReset.getTime()); // Start from midnight of current WIB day
           tempCalcDate.setUTCDate(tempCalcDate.getUTCDate() + daysUntilTarget); 
+          // At this point, tempCalcDate's time part might not be midnight if DST was crossed or something weird.
+          // So, re-normalize to midnight WIB of that target calendar day.
           candidateReset = getMidnightWIB(tempCalcDate); 
 
           if (candidateReset.getTime() < closestNextReset) {
@@ -170,7 +208,7 @@ export function calculateNextResetTimestamp(
       
     default:
       console.error(`Unknown task category: ${taskCategory}`);
-      return baseTimestamp + 24 * 60 * 60 * 1000; // Default 24 jam
+      nextResetDateUTC = new Date(baseTimestamp + 24 * 60 * 60 * 1000); // Default 24 jam
   }
   return nextResetDateUTC.getTime(); // Ini adalah timestamp UTC
 }
