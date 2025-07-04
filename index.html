@@ -4,36 +4,41 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Airdrop Task Tracker</title>
-  <link rel="icon" type="image/png" sizes="96x96" href="/favicon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
       theme: {
         extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          },
           colors: {
-            // New Theme: Dark, Clean, Modern
-            'primary': '#3b82f6', // Bright Blue (Buttons, Accents)
+            // Refined Dark Theme
+            'primary': '#3b82f6', // Bright Blue
             'primary-focus': '#2563eb',
-            'secondary': '#10b981', // Emerald Green (Secondary Actions, Tags)
+            'secondary': '#10b981', // Emerald Green
             'secondary-focus': '#059669',
-            'accent': '#f59e0b', // Amber (Highlights, Warnings)
+            'accent': '#f59e0b', // Amber
             'accent-focus': '#d97706',
             
-            'base-100': '#111827', // Very Dark Blue/Gray (Main Background)
-            'base-200': '#1f2937', // Dark Gray (Card Backgrounds, Borders)
-            'base-300': '#374151', // Medium Gray (Subtle Borders, Dividers)
-            'base-content': '#d1d5db', // Light Gray (Main Text)
-            'base-content-secondary': '#9ca3af', // Medium-Light Gray (Secondary Text, Placeholders)
+            'base-100': '#0f172a', // Main Background - Slate 900
+            'base-200': '#1e293b', // Card Background - Slate 800
+            'base-300': '#334155', // Borders, Dividers - Slate 700
+            'base-content': '#e2e8f0', // Main Text - Slate 200
+            'base-content-secondary': '#94a3b8', // Secondary Text - Slate 400
 
-            'neutral': '#4b5563', // Used for some borders or subdued elements
+            'neutral': '#4b5563', 
             'info': '#3abff8',
             'success': '#36d399',
             'warning': '#fbbd23',
             'error': '#f87272',
           },
           animation: {
-            'fade-in': 'fadeIn 0.3s ease-out forwards', // 'forwards' keeps the final state
-            'slide-in-up': 'slideInUp 0.3s ease-out forwards',
+            'fade-in': 'fadeIn 0.5s ease-out forwards',
+            'slide-in-up': 'slideInUp 0.5s ease-out forwards',
           },
           keyframes: {
             fadeIn: {
@@ -44,11 +49,27 @@
               '0%': { opacity: '0', transform: 'translateY(20px)' },
               '100%': { opacity: '1', transform: 'translateY(0)' },
             }
+          },
+          boxShadow: {
+            'glow-primary': '0 0 15px 0 rgba(59, 130, 246, 0.3)',
+            'glow-secondary': '0 0 15px 0 rgba(16, 185, 129, 0.3)',
           }
         }
       },
       plugins: [
-        // Ensure this section is empty or remove it if no plugins are used
+        function({ addUtilities }) {
+          const newUtilities = {
+            '.backdrop-blur-sm': {
+              '--tw-backdrop-blur': 'blur(4px)',
+              'backdrop-filter': 'var(--tw-backdrop-filter, blur(4px))',
+            },
+            '.backdrop-blur-md': {
+              '--tw-backdrop-blur': 'blur(12px)',
+              'backdrop-filter': 'var(--tw-backdrop-filter, blur(12px))',
+            },
+          }
+          addUtilities(newUtilities)
+        }
       ]
     }
   </script>
@@ -64,9 +85,9 @@
   }
 }
 </script>
-<link rel="stylesheet" href="/index.css">
 </head>
-<body class="bg-base-100 text-base-content font-sans">
+<body class="bg-base-100 text-base-content font-sans antialiased">
+  <div class="fixed top-0 left-0 h-screen w-screen bg-gradient-to-br from-primary/10 via-transparent to-secondary/10 -z-10"></div>
   <div id="root"></div>
   <script type="module" src="/index.tsx"></script>
 </body>

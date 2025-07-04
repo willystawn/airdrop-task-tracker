@@ -1,5 +1,3 @@
-
-
 import React from 'react';
 import { SubTask, TaskResetCategory, WeekDays } from '../../types';
 import { UrlRenderer } from '../shared/UrlRenderer';
@@ -43,7 +41,7 @@ export const SubTaskListItem: React.FC<SubTaskListItemProps> = ({ subTask, taskI
   );
 
   const formattedSpecificDays = !isSubTaskEnded && subTask.category === TaskResetCategory.SPECIFIC_DAY && subTask.specific_reset_days && subTask.specific_reset_days.length > 0
-    ? ` (${subTask.specific_reset_days.map(d => WeekDays.find(wd => wd.id === d)?.name.substring(0,3)).filter(Boolean).join(', ')})`
+    ? `(${subTask.specific_reset_days.map(d => WeekDays.find(wd => wd.id === d)?.name.substring(0,3)).filter(Boolean).join(', ')})`
     : "";
 
   const handleToggle = () => {
@@ -52,23 +50,23 @@ export const SubTaskListItem: React.FC<SubTaskListItemProps> = ({ subTask, taskI
   };
 
   return (
-    <li className="flex items-start gap-2 text-sm">
+    <li className="flex items-start gap-3 text-sm pl-2 border-l-2 border-base-300/70">
       <button
         onClick={handleToggle}
         disabled={parentIsEnded || isSubTaskEnded}
-        className={`p-0.5 flex-shrink-0 focus:outline-none rounded-full ${(parentIsEnded || isSubTaskEnded) ? 'cursor-default' : 'hover:bg-base-300/50'} mt-0.5`}
+        className={`p-0.5 flex-shrink-0 focus:outline-none rounded-full ${(parentIsEnded || isSubTaskEnded) ? 'cursor-default' : 'hover:bg-base-300'} mt-1`}
         aria-label={isEffectivelyCompleted ? "Mark sub-task as incomplete" : "Mark sub-task as complete"}
       >
         {isEffectivelyCompleted ? <CheckCircleIcon className="w-5 h-5 text-success/80" /> : <CircleIcon className="w-5 h-5 text-base-content-secondary/70" />}
       </button>
       <div className="flex-grow">
-        <div className={`${isEffectivelyCompleted ? 'line-through text-base-content-secondary/80' : 'text-base-content-secondary'}`}>
+        <div className={`prose prose-sm max-w-none prose-p:my-0 ${isEffectivelyCompleted ? 'prose-p:line-through text-base-content-secondary/80' : 'text-base-content-secondary'}`}>
           <UrlRenderer text={subTask.title} renderAsParagraphs={true} />
         </div>
         {!parentIsEnded && !isSubTaskEnded && (subTask.category || (subTaskTimeToReset && subTaskTimeToReset !== 'N/A' && subTaskTimeToReset !== 'Menghitung...')) && (
-          <div className="text-xs flex items-center mt-1 space-x-2">
+          <div className="text-xs flex items-center mt-1.5 space-x-2">
             {subTask.category && (
-              <span className="text-base-content-secondary/70 flex items-center">
+              <span className="text-base-content-secondary/60 flex items-center">
                 {getSubCategoryIcon(subTask.category)} {subTask.category}
                 {subTask.category === TaskResetCategory.SPECIFIC_HOURS && subTask.specific_reset_hours && (
                     <span className="ml-0.5">(Every {subTask.specific_reset_hours}h)</span>
@@ -83,12 +81,12 @@ export const SubTaskListItem: React.FC<SubTaskListItemProps> = ({ subTask, taskI
             )}
             {isEffectivelyCompleted && subTaskTimeToReset === "Saatnya / Terlewat" && (
                <span className="text-info/80 flex items-center">
-                 <InformationCircleIcon className="w-3 h-3 mr-0.5"/> {subTaskTimeToReset}
+                 <InformationCircleIcon className="w-3 h-3 mr-0.5"/> Ready
                </span>
             )}
             {!isEffectivelyCompleted && subTask.category && subTaskNextResetNum && Date.now() > subTaskNextResetNum && (
                  <span className="text-error/80 flex items-center">
-                    <InformationCircleIcon className="w-3 h-3 mr-0.5"/> Terlewat
+                    <InformationCircleIcon className="w-3 h-3 mr-0.5"/> Overdue
                 </span>
             )}
           </div>
