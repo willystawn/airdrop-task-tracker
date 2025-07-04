@@ -171,59 +171,61 @@ export const FeatureManagementPage: React.FC<FeatureManagementPageProps> = ({
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         {/* Left column for controls */}
-        <aside className="md:col-span-1 space-y-6">
-            <FilterControlsFM
-                filters={filters}
-                onFilterChange={handleFilterChange}
-                sortOption={sortOption}
-                onSortChange={setSortOption}
-                onClearFilters={handleClearFilters}
-                showCompleted={filters.showCompleted}
-                onShowCompletedChange={(show) => handleFilterChange('showCompleted', show)}
-                globalTagDefinitions={globalTagDefinitions}
-            />
+        <aside className="md:col-span-1 md:sticky md:top-6 self-start">
+            <div className="space-y-6 max-h-[calc(100vh-48px)] overflow-y-auto pr-2">
+                <FilterControlsFM
+                    filters={filters}
+                    onFilterChange={handleFilterChange}
+                    sortOption={sortOption}
+                    onSortChange={setSortOption}
+                    onClearFilters={handleClearFilters}
+                    showCompleted={filters.showCompleted}
+                    onShowCompletedChange={(show) => handleFilterChange('showCompleted', show)}
+                    globalTagDefinitions={globalTagDefinitions}
+                />
 
-            <div className="p-4 bg-base-200/50 border border-base-300/30 rounded-lg shadow">
-                <button
-                    onClick={() => setIsManageTagsVisible(!isManageTagsVisible)}
-                    className="w-full flex justify-between items-center mb-3 group"
-                >
-                    <h2 className="text-lg font-semibold text-base-content group-hover:text-primary transition-colors">Manage Tags</h2>
-                    {isManageTagsVisible ? <ChevronUpIcon className="w-5 h-5 text-base-content-secondary group-hover:text-primary" /> : <ChevronDownIcon className="w-5 h-5 text-base-content-secondary group-hover:text-primary" />}
-                </button>
+                <div className="p-4 bg-base-200/50 border border-base-300/30 rounded-lg shadow">
+                    <button
+                        onClick={() => setIsManageTagsVisible(!isManageTagsVisible)}
+                        className="w-full flex justify-between items-center mb-3 group"
+                    >
+                        <h2 className="text-lg font-semibold text-base-content group-hover:text-primary transition-colors">Manage Tags</h2>
+                        {isManageTagsVisible ? <ChevronUpIcon className="w-5 h-5 text-base-content-secondary group-hover:text-primary" /> : <ChevronDownIcon className="w-5 h-5 text-base-content-secondary group-hover:text-primary" />}
+                    </button>
 
-                {isManageTagsVisible && (
-                    <div className="animate-fade-in space-y-4">
-                        <div className="flex flex-wrap gap-2">
-                        {globalTagDefinitions.map(tagDef => (
-                            <div key={tagDef.text} className="flex items-center bg-base-100/50 rounded-full">
-                            <Tag text={tagDef.text} colorClasses={tagDef.colorClasses} />
-                            <button 
-                                onClick={() => onDeleteGlobalTag(tagDef.text)} 
-                                className="ml-1 mr-2 p-0.5 text-error/70 hover:text-error focus:outline-none"
-                                aria-label={`Delete tag ${tagDef.text}`}
-                            >
-                                <XMarkIcon className="w-3.5 h-3.5"/>
+                    {isManageTagsVisible && (
+                        <div className="animate-fade-in space-y-4">
+                            <div className="flex flex-wrap gap-2">
+                            {globalTagDefinitions.map(tagDef => (
+                                <div key={tagDef.text} className="flex items-center bg-base-100/50 rounded-full">
+                                <Tag text={tagDef.text} colorClasses={tagDef.colorClasses} />
+                                <button 
+                                    onClick={() => onDeleteGlobalTag(tagDef.text)} 
+                                    className="ml-1 mr-2 p-0.5 text-error/70 hover:text-error focus:outline-none"
+                                    aria-label={`Delete tag ${tagDef.text}`}
+                                >
+                                    <XMarkIcon className="w-3.5 h-3.5"/>
+                                </button>
+                                </div>
+                            ))}
+                            </div>
+                            <div className="flex gap-2">
+                            <input 
+                                type="text"
+                                value={newGlobalTagText}
+                                onChange={(e) => setNewGlobalTagText(e.target.value)}
+                                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddGlobalTag(); } }}
+                                placeholder="New tag name..."
+                                className="flex-grow bg-base-100 border border-base-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
+                            />
+                            <button onClick={handleAddGlobalTag} className="bg-secondary text-white px-4 py-2 rounded-md hover:bg-secondary-focus focus:outline-none text-sm">
+                                Add
                             </button>
                             </div>
-                        ))}
+                            {globalTagDefinitions.length === 0 && <p className="text-xs text-base-content-secondary mt-2">No system tags defined. Add one to get started.</p>}
                         </div>
-                        <div className="flex gap-2">
-                        <input 
-                            type="text"
-                            value={newGlobalTagText}
-                            onChange={(e) => setNewGlobalTagText(e.target.value)}
-                            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddGlobalTag(); } }}
-                            placeholder="New tag name..."
-                            className="flex-grow bg-base-100 border border-base-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
-                        />
-                        <button onClick={handleAddGlobalTag} className="bg-secondary text-white px-4 py-2 rounded-md hover:bg-secondary-focus focus:outline-none text-sm">
-                            Add
-                        </button>
-                        </div>
-                        {globalTagDefinitions.length === 0 && <p className="text-xs text-base-content-secondary mt-2">No system tags defined. Add one to get started.</p>}
-                    </div>
-                )}
+                    )}
+                </div>
             </div>
         </aside>
 
