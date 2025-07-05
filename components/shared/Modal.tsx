@@ -7,10 +7,24 @@ interface ModalProps {
   title: string;
   children: ReactNode;
   size?: 'sm' | 'md' | 'lg' | 'xl';
+  closeOnOverlayClick?: boolean;
 }
 
-export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, size = 'md' }) => {
+export const Modal: React.FC<ModalProps> = ({ 
+    isOpen, 
+    onClose, 
+    title, 
+    children, 
+    size = 'md',
+    closeOnOverlayClick = true 
+}) => {
   if (!isOpen) return null;
+
+  const handleOverlayClick = () => {
+    if (closeOnOverlayClick) {
+      onClose();
+    }
+  };
 
   const sizeClasses = {
     sm: 'max-w-sm',
@@ -22,7 +36,7 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, 
   return (
     <div 
         className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50 animate-fade-in"
-        onClick={onClose}
+        onClick={handleOverlayClick}
     >
       <div 
         className={`bg-base-200/80 backdrop-blur-md border border-base-300/50 rounded-xl shadow-2xl w-full ${sizeClasses[size]} m-4 animate-slide-in-up`}

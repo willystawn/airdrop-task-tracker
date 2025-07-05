@@ -345,7 +345,13 @@ export const TaskForm: React.FC<FormComponentProps<ManagedTask> & { globalTagDef
 
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={existingTask ? "Edit Task" : "Add New Task"} size="xl">
+    <Modal 
+        isOpen={isOpen} 
+        onClose={onClose} 
+        title={existingTask ? "Edit Task" : "Add New Task"} 
+        size="xl"
+        closeOnOverlayClick={false}
+    >
       <form onSubmit={handleSubmit} className="space-y-6 max-h-[80vh] overflow-y-auto p-1 pr-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
