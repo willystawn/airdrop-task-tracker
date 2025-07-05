@@ -68,6 +68,16 @@
               '--tw-backdrop-blur': 'blur(12px)',
               'backdrop-filter': 'var(--tw-backdrop-filter, blur(12px))',
             },
+            '.scrollbar-hide': {
+              /* Firefox */
+              'scrollbar-width': 'none',
+              /* Safari and Chrome */
+              '&::-webkit-scrollbar': {
+                display: 'none',
+              },
+              /* IE and Edge */
+              '-ms-overflow-style': 'none',
+            },
           }
           addUtilities(newUtilities)
         }

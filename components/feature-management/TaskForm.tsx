@@ -352,269 +352,271 @@ export const TaskForm: React.FC<FormComponentProps<ManagedTask> & { globalTagDef
         size="xl"
         closeOnOverlayClick={false}
     >
-      <form onSubmit={handleSubmit} className="space-y-6 max-h-[80vh] overflow-y-auto p-1 pr-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-            <label htmlFor="title" className="block text-sm font-medium text-base-content-secondary mb-1">Title</label>
-            <input type="text" name="title" id="title" value={taskData.title} onChange={handleChange} required
-                    className="mt-1 block w-full bg-base-100 border border-base-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm" />
-            </div>
-            <div>
-            <label htmlFor="logo_url" className="block text-sm font-medium text-base-content-secondary mb-1">Logo URL (Optional)</label>
-            <input type="url" name="logo_url" id="logo_url" value={taskData.logo_url || ''} onChange={handleChange}
-                    className="mt-1 block w-full bg-base-100 border border-base-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm" />
-            </div>
-        </div>
-        <div>
-          <label htmlFor="description" className="block text-sm font-medium text-base-content-secondary mb-1">Description (URLs &amp; [text](url) supported)</label>
-          <textarea name="description" id="description" value={taskData.description} onChange={handleChange} rows={4}
-                    className="mt-1 block w-full bg-base-100 border border-base-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm" />
-        </div>
-        <div>
-          <label htmlFor="category" className="block text-sm font-medium text-base-content-secondary mb-1">Reset Category</label>
-          <select name="category" id="category" value={taskData.category} onChange={handleChange}
-                  className="mt-1 block w-full bg-base-100 border border-base-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm appearance-none">
-            {Object.values(TaskResetCategory).map(cat => <option key={cat} value={cat}>{cat}</option>)}
-          </select>
-        </div>
-
-        {taskData.category === TaskResetCategory.SPECIFIC_HOURS && (
-          <div className="animate-fade-in">
-            <label htmlFor="specific_reset_hours" className="block text-sm font-medium text-base-content-secondary mb-1">Reset Every (Hours)</label>
-            <input 
-                type="number" name="specific_reset_hours" id="specific_reset_hours" value={taskData.specific_reset_hours || ''} onChange={handleChange}
-                min="1" placeholder="e.g., 3 for every 3 hours"
-                className="mt-1 block w-full bg-base-100 border border-base-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm" 
-            />
-             {(!taskData.specific_reset_hours || taskData.specific_reset_hours <= 0) && (
-                <p className="text-xs text-error mt-1">Hours must be a positive number.</p>
-            )}
-          </div>
-        )}
-
-        {taskData.category === TaskResetCategory.SPECIFIC_DAY && (
-          <div className="animate-fade-in">
-            <label className="block text-sm font-medium text-base-content-secondary mb-1">Reset on Specific Days (WIB Midnight)</label>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2">
-              {WeekDays.map(day => (
-                <label key={day.id} className={`flex items-center space-x-2 p-2 border rounded-md cursor-pointer transition-colors ${ (taskData.specific_reset_days || []).includes(day.id) ? 'bg-primary/20 border-primary' : 'bg-base-100 border-base-300 hover:bg-base-300/50'}`}>
-                  <input
-                    type="checkbox"
-                    checked={(taskData.specific_reset_days || []).includes(day.id)}
-                    onChange={() => handleDayToggle(day.id)}
-                    className="form-checkbox h-4 w-4 text-primary rounded border-neutral focus:ring-primary bg-transparent"
-                  />
-                  <span className="text-sm text-base-content">{day.name}</span>
-                </label>
-              ))}
-            </div>
-             {(!taskData.specific_reset_days || taskData.specific_reset_days.length === 0) && (
-                <p className="text-xs text-error mt-2">At least one day must be selected.</p>
-            )}
-          </div>
-        )}
-        
-        {/* Tags Section */}
-        <div className="pt-4 border-t border-base-300/50">
-            <label className="block text-sm font-medium text-base-content-secondary mb-2">Tags (max 10)</label>
-            <div className="mt-1 flex flex-wrap gap-2 items-center min-h-[44px] p-2 border border-base-300 rounded-lg bg-base-100">
-                {taskData.tags.length === 0 && <span className="text-sm text-base-content-secondary/70">No tags added</span>}
-                {taskData.tags.map(tagText => (
-                    <Tag 
-                        key={tagText} text={tagText} colorClasses={getTagColor(tagText)}
-                        onClick={() => handleTagRemove(tagText)} 
-                        className="cursor-pointer !py-1 !px-2 !text-sm flex items-center gap-1.5"
-                    >
-                       <XMarkIcon className="w-3.5 h-3.5"/>
-                    </Tag>
-                ))}
-            </div>
-            {taskData.tags.length < 10 && (
-                <div className="mt-2 flex">
-                    <input 
-                        type="text" value={currentTagInput}
-                        onChange={(e) => setCurrentTagInput(e.target.value)}
-                        onKeyDown={(e) => { if(e.key === 'Enter') { e.preventDefault(); handleTagAdd(currentTagInput);}}}
-                        placeholder="Add from existing or create new..."
-                        className="flex-grow bg-base-100 border border-base-300 rounded-l-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm" 
-                        list="global-tags-datalist"
-                    />
-                    <datalist id="global-tags-datalist">
-                        {globalTagDefinitions.filter(gtd => !taskData.tags.includes(gtd.text)).map(gtd => <option key={gtd.text} value={gtd.text} />)}
-                    </datalist>
-                    <button type="button" onClick={() => handleTagAdd(currentTagInput)} className="bg-primary text-white px-4 py-2 rounded-r-md hover:bg-primary-focus focus:outline-none text-sm">Add</button>
-                </div>
-            )}
-            <div className="mt-3 flex flex-wrap gap-1.5">
-                {globalTagDefinitions
-                    .filter(gtd => !taskData.tags.includes(gtd.text) && taskData.tags.length < 10)
-                    .map(gtd => (
-                        <button type="button" key={gtd.text} onClick={() => handleTagAdd(gtd.text)} className="flex items-center gap-1 p-1 rounded-full hover:opacity-100 opacity-70 transition-opacity">
-                            <PlusCircleIcon className="w-4 h-4 text-base-content-secondary"/>
-                            <Tag text={gtd.text} colorClasses={gtd.colorClasses} className="!text-xs"/>
-                        </button>
-                ))}
-            </div>
-        </div>
-
-
-        {/* Sub-tasks Section */}
-        <div className="pt-4 border-t border-base-300/50">
-            <h3 className="text-lg font-semibold text-base-content mb-3">Sub-tasks</h3>
-            <div className="space-y-3">
-                {(taskData.sub_tasks || []).map((subTask, index) => (
-                    <div key={index} className={`p-3 rounded-lg border ${editingSubTask?.index === index ? 'bg-base-300/30 border-primary' : 'bg-base-100/70 border-base-300/70'}`}>
-                        {editingSubTask?.index === index ? (
-                            <div className="space-y-2">
-                                <textarea
-                                    value={editingSubTask.title}
-                                    onChange={(e) => setEditingSubTask({ ...editingSubTask!, title: e.target.value })}
-                                    onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSaveEditedSubTask(); } else if (e.key === 'Escape') { handleCancelEditSubTask(); } }}
-                                    className="block w-full bg-base-100 border border-primary rounded-md shadow-sm py-1.5 px-2 focus:outline-none focus:ring-1 focus:ring-primary sm:text-sm"
-                                    rows={2} autoFocus placeholder="Sub-task title/description"
-                                />
-                                 <select 
-                                    value={editingSubTask.category} 
-                                    onChange={(e) => {
-                                        const newCat = e.target.value as TaskResetCategory | "";
-                                        setEditingSubTask({...editingSubTask!, category: newCat, 
-                                            hours: newCat === TaskResetCategory.SPECIFIC_HOURS ? editingSubTask!.hours : null,
-                                            specific_days: newCat === TaskResetCategory.SPECIFIC_DAY ? (editingSubTask!.specific_days || []) : []
-                                        });
-                                    }}
-                                    className="block w-full bg-base-100 border border-primary rounded-md shadow-sm py-1.5 px-2 focus:outline-none focus:ring-1 focus:ring-primary sm:text-sm appearance-none text-xs"
-                                >
-                                    <option value="">No Category (Resets with Parent)</option>
-                                    {Object.values(TaskResetCategory).map(cat => <option key={cat} value={cat}>{cat}</option>)}
-                                </select>
-                                {editingSubTask.category === TaskResetCategory.SPECIFIC_HOURS && (
-                                     <input 
-                                        type="number" 
-                                        value={editingSubTask.hours || ''} 
-                                        onChange={(e) => setEditingSubTask({...editingSubTask!, hours: e.target.value ? parseInt(e.target.value, 10) : null})}
-                                        min="1" placeholder="e.g., 3 (hours)"
-                                        className="block w-full bg-base-100 border border-primary rounded-md shadow-sm py-1.5 px-2 focus:outline-none focus:ring-1 focus:ring-primary sm:text-sm text-xs" 
-                                    />
-                                )}
-                                {editingSubTask.category === TaskResetCategory.SPECIFIC_HOURS && (!editingSubTask.hours || editingSubTask.hours <=0) && (
-                                    <p className="text-xs text-error">Hours must be a positive number.</p>
-                                )}
-                                {editingSubTask.category === TaskResetCategory.SPECIFIC_DAY && (
-                                    <div className="space-y-1">
-                                      <div className="grid grid-cols-3 sm:grid-cols-4 gap-1 mt-1">
-                                          {WeekDays.map(day => (
-                                              <label key={`edit-subtask-day-${day.id}`} className="flex items-center space-x-1 p-1 bg-base-100/50 border border-primary/50 rounded-md hover:bg-primary/10 cursor-pointer text-xs">
-                                                  <input type="checkbox" checked={(editingSubTask.specific_days || []).includes(day.id)} onChange={() => handleSubTaskDayToggle(day.id, true)} className="form-checkbox h-3 w-3 text-primary rounded border-neutral-focus focus:ring-primary"/>
-                                                  <span>{day.name.substring(0,3)}</span>
-                                              </label>
-                                          ))}
-                                      </div>
-                                      {(!editingSubTask.specific_days || editingSubTask.specific_days.length === 0) && (
-                                        <p className="text-xs text-error">At least one day must be selected.</p>
-                                      )}
-                                    </div>
-                                )}
-                                <div className="flex gap-2 justify-end">
-                                    <button type="button" onClick={handleSaveEditedSubTask} className="p-1.5 text-success hover:bg-success/20 rounded-md" title="Save Sub-task"><SaveIcon className="w-5 h-5"/></button>
-                                    <button type="button" onClick={handleCancelEditSubTask} className="p-1.5 text-neutral-content hover:bg-neutral/30 rounded-md" title="Cancel Edit"><CancelIcon className="w-5 h-5"/></button>
-                                </div>
-                            </div>
-                        ) : (
-                            <div className="flex items-start justify-between">
-                                <div className="text-sm text-base-content-secondary flex-grow pr-2 prose prose-sm max-w-none prose-p:my-0">
-                                  <div className={`${subTask.category === TaskResetCategory.ENDED ? 'line-through' : ''}`}><UrlRenderer text={subTask.title} renderAsParagraphs={true}/></div>
-                                  {subTask.category && (
-                                    <p className="text-xs text-base-content-secondary/70 mt-1">
-                                        Reset: {subTask.category}
-                                        {subTask.category === TaskResetCategory.SPECIFIC_HOURS && subTask.specific_reset_hours && ` (Every ${subTask.specific_reset_hours}h)`}
-                                        {subTask.category === TaskResetCategory.SPECIFIC_DAY && subTask.specific_reset_days && subTask.specific_reset_days.length > 0 && 
-                                            ` (${subTask.specific_reset_days.map(d => WeekDays.find(wd => wd.id === d)?.name.substring(0,3)).filter(Boolean).join(', ')})`
-                                        }
-                                    </p>
-                                  )}
-                                </div>
-                                <div className="flex gap-1 flex-shrink-0">
-                                    <button type="button" onClick={() => handleEditSubTask(index)} className="p-1 text-secondary hover:bg-secondary/20 rounded-md" title="Edit Sub-task"><PencilSquareIcon className="w-5 h-5"/></button>
-                                    <button type="button" onClick={() => handleRemoveSubTask(index)} className="p-1 text-error hover:bg-error/20 rounded-md" title="Remove Sub-task"><TrashIcon className="w-5 h-5"/></button>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                ))}
-            </div>
-             {/* Add New Sub-task Form */}
-            {editingSubTask === null && (
-              <div className="mt-4 p-4 border border-dashed border-base-300 rounded-lg space-y-3 bg-base-100/50">
-                  <textarea
-                      value={currentSubTaskTitle}
-                      onChange={(e) => setCurrentSubTaskTitle(e.target.value)}
-                      onKeyDown={(e) => { if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleAddSubTask();}}}
-                      placeholder="Enter sub-task title/description (Shift+Enter for new line)"
-                      className="block w-full bg-base-200 border border-base-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
-                      rows={2}
-                  />
-                  <div className="flex flex-col sm:flex-row gap-2 items-start">
-                    <div className="flex-grow w-full space-y-1.5">
-                        <select 
-                            value={currentSubTaskCategory} 
-                            onChange={(e) => {
-                                const newCat = e.target.value as TaskResetCategory | "";
-                                setCurrentSubTaskCategory(newCat);
-                                if (newCat !== TaskResetCategory.SPECIFIC_HOURS) setCurrentSubTaskHours(null);
-                                if (newCat !== TaskResetCategory.SPECIFIC_DAY) setCurrentSubTaskSpecificDays([]);
-                            }}
-                            className="w-full bg-base-200 border border-base-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm appearance-none text-xs"
-                        >
-                            <option value="">No Category (Resets with Parent)</option>
-                            {Object.values(TaskResetCategory).map(cat => <option key={cat} value={cat}>{cat}</option>)}
-                        </select>
-                        {currentSubTaskCategory === TaskResetCategory.SPECIFIC_HOURS && (
-                            <input
-                                type="number" value={currentSubTaskHours || ''}
-                                onChange={(e) => setCurrentSubTaskHours(e.target.value ? parseInt(e.target.value, 10) : null)}
-                                min="1" placeholder="Hours (e.g., 3)"
-                                className="w-full bg-base-200 border border-base-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm text-xs"
-                            />
-                        )}
-                         {currentSubTaskCategory === TaskResetCategory.SPECIFIC_HOURS && currentSubTaskTitle.trim() !== '' && (!currentSubTaskHours || currentSubTaskHours <=0) && (
-                            <p className="text-xs text-error">Hours must be a positive number.</p>
-                        )}
-                        {currentSubTaskCategory === TaskResetCategory.SPECIFIC_DAY && (
-                             <div className="space-y-1">
-                                <div className="grid grid-cols-3 sm:grid-cols-4 gap-1 mt-1">
-                                    {WeekDays.map(day => (
-                                        <label key={`add-subtask-day-${day.id}`} className="flex items-center space-x-1 p-1 bg-base-200 border border-base-300 rounded-md hover:bg-primary/10 cursor-pointer text-xs">
-                                            <input type="checkbox" checked={currentSubTaskSpecificDays.includes(day.id)} onChange={() => handleSubTaskDayToggle(day.id, false)} className="form-checkbox h-3 w-3 text-primary rounded border-neutral-focus focus:ring-primary"/>
-                                            <span>{day.name.substring(0,3)}</span>
-                                        </label>
-                                    ))}
-                                </div>
-                                {currentSubTaskCategory === TaskResetCategory.SPECIFIC_DAY && currentSubTaskTitle.trim() !== '' && currentSubTaskSpecificDays.length === 0 && (
-                                    <p className="text-xs text-error">At least one day must be selected.</p>
-                                )}
-                            </div>
-                        )}
-                    </div>
-                    <button 
-                        type="button" onClick={handleAddSubTask} 
-                        className="w-full mt-2 sm:mt-0 sm:w-auto sm:flex-shrink-0 bg-secondary text-white px-3 py-2 rounded-md hover:bg-secondary-focus flex items-center justify-center focus:outline-none text-sm self-start disabled:opacity-50"
-                        disabled={
-                            currentSubTaskTitle.trim() === '' ||
-                            (currentSubTaskCategory === TaskResetCategory.SPECIFIC_HOURS && (!currentSubTaskHours || currentSubTaskHours <=0)) ||
-                            (currentSubTaskCategory === TaskResetCategory.SPECIFIC_DAY && currentSubTaskSpecificDays.length === 0)
-                        }
-                    >
-                        <PlusCircleIcon className="w-5 h-5 mr-1"/> <span>Add</span>
-                    </button>
-                  </div>
+      <form onSubmit={handleSubmit} className="flex flex-col max-h-[80vh]">
+        <div className="flex-grow overflow-y-auto p-1 pr-4 space-y-6 scrollbar-hide">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+              <label htmlFor="title" className="block text-sm font-medium text-base-content-secondary mb-1">Title</label>
+              <input type="text" name="title" id="title" value={taskData.title} onChange={handleChange} required
+                      className="mt-1 block w-full bg-base-100 border border-base-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm" />
               </div>
-            )}
-            {(taskData.sub_tasks || []).length === 0 && editingSubTask === null && (
-                <p className="text-sm text-base-content-secondary mt-3 text-center py-4">No sub-tasks yet.</p>
-            )}
-        </div>
+              <div>
+              <label htmlFor="logo_url" className="block text-sm font-medium text-base-content-secondary mb-1">Logo URL (Optional)</label>
+              <input type="url" name="logo_url" id="logo_url" value={taskData.logo_url || ''} onChange={handleChange}
+                      className="mt-1 block w-full bg-base-100 border border-base-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm" />
+              </div>
+          </div>
+          <div>
+            <label htmlFor="description" className="block text-sm font-medium text-base-content-secondary mb-1">Description (URLs &amp; [text](url) supported)</label>
+            <textarea name="description" id="description" value={taskData.description} onChange={handleChange} rows={4}
+                      className="mt-1 block w-full bg-base-100 border border-base-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm" />
+          </div>
+          <div>
+            <label htmlFor="category" className="block text-sm font-medium text-base-content-secondary mb-1">Reset Category</label>
+            <select name="category" id="category" value={taskData.category} onChange={handleChange}
+                    className="mt-1 block w-full bg-base-100 border border-base-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm appearance-none">
+              {Object.values(TaskResetCategory).map(cat => <option key={cat} value={cat}>{cat}</option>)}
+            </select>
+          </div>
 
-        <div className="flex justify-end space-x-3 pt-5 mt-4 border-t border-base-300/50">
+          {taskData.category === TaskResetCategory.SPECIFIC_HOURS && (
+            <div className="animate-fade-in">
+              <label htmlFor="specific_reset_hours" className="block text-sm font-medium text-base-content-secondary mb-1">Reset Every (Hours)</label>
+              <input 
+                  type="number" name="specific_reset_hours" id="specific_reset_hours" value={taskData.specific_reset_hours || ''} onChange={handleChange}
+                  min="1" placeholder="e.g., 3 for every 3 hours"
+                  className="mt-1 block w-full bg-base-100 border border-base-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm" 
+              />
+              {(!taskData.specific_reset_hours || taskData.specific_reset_hours <= 0) && (
+                  <p className="text-xs text-error mt-1">Hours must be a positive number.</p>
+              )}
+            </div>
+          )}
+
+          {taskData.category === TaskResetCategory.SPECIFIC_DAY && (
+            <div className="animate-fade-in">
+              <label className="block text-sm font-medium text-base-content-secondary mb-1">Reset on Specific Days (WIB Midnight)</label>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2">
+                {WeekDays.map(day => (
+                  <label key={day.id} className={`flex items-center space-x-2 p-2 border rounded-md cursor-pointer transition-colors ${ (taskData.specific_reset_days || []).includes(day.id) ? 'bg-primary/20 border-primary' : 'bg-base-100 border-base-300 hover:bg-base-300/50'}`}>
+                    <input
+                      type="checkbox"
+                      checked={(taskData.specific_reset_days || []).includes(day.id)}
+                      onChange={() => handleDayToggle(day.id)}
+                      className="form-checkbox h-4 w-4 text-primary rounded border-neutral focus:ring-primary bg-transparent"
+                    />
+                    <span className="text-sm text-base-content">{day.name}</span>
+                  </label>
+                ))}
+              </div>
+              {(!taskData.specific_reset_days || taskData.specific_reset_days.length === 0) && (
+                  <p className="text-xs text-error mt-2">At least one day must be selected.</p>
+              )}
+            </div>
+          )}
+          
+          {/* Tags Section */}
+          <div className="pt-4 border-t border-base-300/50">
+              <label className="block text-sm font-medium text-base-content-secondary mb-2">Tags (max 10)</label>
+              <div className="mt-1 flex flex-wrap gap-2 items-center min-h-[44px] p-2 border border-base-300 rounded-lg bg-base-100">
+                  {taskData.tags.length === 0 && <span className="text-sm text-base-content-secondary/70">No tags added</span>}
+                  {taskData.tags.map(tagText => (
+                      <Tag 
+                          key={tagText} text={tagText} colorClasses={getTagColor(tagText)}
+                          onClick={() => handleTagRemove(tagText)} 
+                          className="cursor-pointer !py-1 !px-2 !text-sm flex items-center gap-1.5"
+                      >
+                        <XMarkIcon className="w-3.5 h-3.5"/>
+                      </Tag>
+                  ))}
+              </div>
+              {taskData.tags.length < 10 && (
+                  <div className="mt-2 flex">
+                      <input 
+                          type="text" value={currentTagInput}
+                          onChange={(e) => setCurrentTagInput(e.target.value)}
+                          onKeyDown={(e) => { if(e.key === 'Enter') { e.preventDefault(); handleTagAdd(currentTagInput);}}}
+                          placeholder="Add from existing or create new..."
+                          className="flex-grow bg-base-100 border border-base-300 rounded-l-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm" 
+                          list="global-tags-datalist"
+                      />
+                      <datalist id="global-tags-datalist">
+                          {globalTagDefinitions.filter(gtd => !taskData.tags.includes(gtd.text)).map(gtd => <option key={gtd.text} value={gtd.text} />)}
+                      </datalist>
+                      <button type="button" onClick={() => handleTagAdd(currentTagInput)} className="bg-primary text-white px-4 py-2 rounded-r-md hover:bg-primary-focus focus:outline-none text-sm">Add</button>
+                  </div>
+              )}
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                  {globalTagDefinitions
+                      .filter(gtd => !taskData.tags.includes(gtd.text) && taskData.tags.length < 10)
+                      .map(gtd => (
+                          <button type="button" key={gtd.text} onClick={() => handleTagAdd(gtd.text)} className="flex items-center gap-1 p-1 rounded-full hover:opacity-100 opacity-70 transition-opacity">
+                              <PlusCircleIcon className="w-4 h-4 text-base-content-secondary"/>
+                              <Tag text={gtd.text} colorClasses={gtd.colorClasses} className="!text-xs"/>
+                          </button>
+                  ))}
+              </div>
+          </div>
+
+
+          {/* Sub-tasks Section */}
+          <div className="pt-4 border-t border-base-300/50">
+              <h3 className="text-lg font-semibold text-base-content mb-3">Sub-tasks</h3>
+              <div className="space-y-3">
+                  {(taskData.sub_tasks || []).map((subTask, index) => (
+                      <div key={index} className={`p-3 rounded-lg border ${editingSubTask?.index === index ? 'bg-base-300/30 border-primary' : 'bg-base-100/70 border-base-300/70'}`}>
+                          {editingSubTask?.index === index ? (
+                              <div className="space-y-2">
+                                  <textarea
+                                      value={editingSubTask.title}
+                                      onChange={(e) => setEditingSubTask({ ...editingSubTask!, title: e.target.value })}
+                                      onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSaveEditedSubTask(); } else if (e.key === 'Escape') { handleCancelEditSubTask(); } }}
+                                      className="block w-full bg-base-100 border border-primary rounded-md shadow-sm py-1.5 px-2 focus:outline-none focus:ring-1 focus:ring-primary sm:text-sm"
+                                      rows={2} autoFocus placeholder="Sub-task title/description"
+                                  />
+                                  <select 
+                                      value={editingSubTask.category} 
+                                      onChange={(e) => {
+                                          const newCat = e.target.value as TaskResetCategory | "";
+                                          setEditingSubTask({...editingSubTask!, category: newCat, 
+                                              hours: newCat === TaskResetCategory.SPECIFIC_HOURS ? editingSubTask!.hours : null,
+                                              specific_days: newCat === TaskResetCategory.SPECIFIC_DAY ? (editingSubTask!.specific_days || []) : []
+                                          });
+                                      }}
+                                      className="block w-full bg-base-100 border border-primary rounded-md shadow-sm py-1.5 px-2 focus:outline-none focus:ring-1 focus:ring-primary sm:text-sm appearance-none text-xs"
+                                  >
+                                      <option value="">No Category (Resets with Parent)</option>
+                                      {Object.values(TaskResetCategory).map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                                  </select>
+                                  {editingSubTask.category === TaskResetCategory.SPECIFIC_HOURS && (
+                                      <input 
+                                          type="number" 
+                                          value={editingSubTask.hours || ''} 
+                                          onChange={(e) => setEditingSubTask({...editingSubTask!, hours: e.target.value ? parseInt(e.target.value, 10) : null})}
+                                          min="1" placeholder="e.g., 3 (hours)"
+                                          className="block w-full bg-base-100 border border-primary rounded-md shadow-sm py-1.5 px-2 focus:outline-none focus:ring-1 focus:ring-primary sm:text-sm text-xs" 
+                                      />
+                                  )}
+                                  {editingSubTask.category === TaskResetCategory.SPECIFIC_HOURS && (!editingSubTask.hours || editingSubTask.hours <=0) && (
+                                      <p className="text-xs text-error">Hours must be a positive number.</p>
+                                  )}
+                                  {editingSubTask.category === TaskResetCategory.SPECIFIC_DAY && (
+                                      <div className="space-y-1">
+                                        <div className="grid grid-cols-3 sm:grid-cols-4 gap-1 mt-1">
+                                            {WeekDays.map(day => (
+                                                <label key={`edit-subtask-day-${day.id}`} className="flex items-center space-x-1 p-1 bg-base-100/50 border border-primary/50 rounded-md hover:bg-primary/10 cursor-pointer text-xs">
+                                                    <input type="checkbox" checked={(editingSubTask.specific_days || []).includes(day.id)} onChange={() => handleSubTaskDayToggle(day.id, true)} className="form-checkbox h-3 w-3 text-primary rounded border-neutral-focus focus:ring-primary"/>
+                                                    <span>{day.name.substring(0,3)}</span>
+                                                </label>
+                                            ))}
+                                        </div>
+                                        {(!editingSubTask.specific_days || editingSubTask.specific_days.length === 0) && (
+                                          <p className="text-xs text-error">At least one day must be selected.</p>
+                                        )}
+                                      </div>
+                                  )}
+                                  <div className="flex gap-2 justify-end">
+                                      <button type="button" onClick={handleSaveEditedSubTask} className="p-1.5 text-success hover:bg-success/20 rounded-md" title="Save Sub-task"><SaveIcon className="w-5 h-5"/></button>
+                                      <button type="button" onClick={handleCancelEditSubTask} className="p-1.5 text-neutral-content hover:bg-neutral/30 rounded-md" title="Cancel Edit"><CancelIcon className="w-5 h-5"/></button>
+                                  </div>
+                              </div>
+                          ) : (
+                              <div className="flex items-start justify-between">
+                                  <div className="text-sm text-base-content-secondary flex-grow pr-2 prose prose-sm max-w-none prose-p:my-0">
+                                    <div className={`${subTask.category === TaskResetCategory.ENDED ? 'line-through' : ''}`}><UrlRenderer text={subTask.title} renderAsParagraphs={true}/></div>
+                                    {subTask.category && (
+                                      <p className="text-xs text-base-content-secondary/70 mt-1">
+                                          Reset: {subTask.category}
+                                          {subTask.category === TaskResetCategory.SPECIFIC_HOURS && subTask.specific_reset_hours && ` (Every ${subTask.specific_reset_hours}h)`}
+                                          {subTask.category === TaskResetCategory.SPECIFIC_DAY && subTask.specific_reset_days && subTask.specific_reset_days.length > 0 && 
+                                              ` (${subTask.specific_reset_days.map(d => WeekDays.find(wd => wd.id === d)?.name.substring(0,3)).filter(Boolean).join(', ')})`
+                                          }
+                                      </p>
+                                    )}
+                                  </div>
+                                  <div className="flex gap-1 flex-shrink-0">
+                                      <button type="button" onClick={() => handleEditSubTask(index)} className="p-1 text-secondary hover:bg-secondary/20 rounded-md" title="Edit Sub-task"><PencilSquareIcon className="w-5 h-5"/></button>
+                                      <button type="button" onClick={() => handleRemoveSubTask(index)} className="p-1 text-error hover:bg-error/20 rounded-md" title="Remove Sub-task"><TrashIcon className="w-5 h-5"/></button>
+                                  </div>
+                              </div>
+                          )}
+                      </div>
+                  ))}
+              </div>
+              {/* Add New Sub-task Form */}
+              {editingSubTask === null && (
+                <div className="mt-4 p-4 border border-dashed border-base-300 rounded-lg space-y-3 bg-base-100/50">
+                    <textarea
+                        value={currentSubTaskTitle}
+                        onChange={(e) => setCurrentSubTaskTitle(e.target.value)}
+                        onKeyDown={(e) => { if(e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleAddSubTask();}}}
+                        placeholder="Enter sub-task title/description (Shift+Enter for new line)"
+                        className="block w-full bg-base-200 border border-base-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
+                        rows={2}
+                    />
+                    <div className="flex flex-col sm:flex-row gap-2 items-start">
+                      <div className="flex-grow w-full space-y-1.5">
+                          <select 
+                              value={currentSubTaskCategory} 
+                              onChange={(e) => {
+                                  const newCat = e.target.value as TaskResetCategory | "";
+                                  setCurrentSubTaskCategory(newCat);
+                                  if (newCat !== TaskResetCategory.SPECIFIC_HOURS) setCurrentSubTaskHours(null);
+                                  if (newCat !== TaskResetCategory.SPECIFIC_DAY) setCurrentSubTaskSpecificDays([]);
+                              }}
+                              className="w-full bg-base-200 border border-base-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm appearance-none text-xs"
+                          >
+                              <option value="">No Category (Resets with Parent)</option>
+                              {Object.values(TaskResetCategory).map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                          </select>
+                          {currentSubTaskCategory === TaskResetCategory.SPECIFIC_HOURS && (
+                              <input
+                                  type="number" value={currentSubTaskHours || ''}
+                                  onChange={(e) => setCurrentSubTaskHours(e.target.value ? parseInt(e.target.value, 10) : null)}
+                                  min="1" placeholder="Hours (e.g., 3)"
+                                  className="w-full bg-base-200 border border-base-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm text-xs"
+                              />
+                          )}
+                          {currentSubTaskCategory === TaskResetCategory.SPECIFIC_HOURS && currentSubTaskTitle.trim() !== '' && (!currentSubTaskHours || currentSubTaskHours <=0) && (
+                              <p className="text-xs text-error">Hours must be a positive number.</p>
+                          )}
+                          {currentSubTaskCategory === TaskResetCategory.SPECIFIC_DAY && (
+                              <div className="space-y-1">
+                                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-1 mt-1">
+                                      {WeekDays.map(day => (
+                                          <label key={`add-subtask-day-${day.id}`} className="flex items-center space-x-1 p-1 bg-base-200 border border-base-300 rounded-md hover:bg-primary/10 cursor-pointer text-xs">
+                                              <input type="checkbox" checked={currentSubTaskSpecificDays.includes(day.id)} onChange={() => handleSubTaskDayToggle(day.id, false)} className="form-checkbox h-3 w-3 text-primary rounded border-neutral-focus focus:ring-primary"/>
+                                              <span>{day.name.substring(0,3)}</span>
+                                          </label>
+                                      ))}
+                                  </div>
+                                  {currentSubTaskCategory === TaskResetCategory.SPECIFIC_DAY && currentSubTaskTitle.trim() !== '' && currentSubTaskSpecificDays.length === 0 && (
+                                      <p className="text-xs text-error">At least one day must be selected.</p>
+                                  )}
+                              </div>
+                          )}
+                      </div>
+                      <button 
+                          type="button" onClick={handleAddSubTask} 
+                          className="w-full mt-2 sm:mt-0 sm:w-auto sm:flex-shrink-0 bg-secondary text-white px-3 py-2 rounded-md hover:bg-secondary-focus flex items-center justify-center focus:outline-none text-sm self-start disabled:opacity-50"
+                          disabled={
+                              currentSubTaskTitle.trim() === '' ||
+                              (currentSubTaskCategory === TaskResetCategory.SPECIFIC_HOURS && (!currentSubTaskHours || currentSubTaskHours <=0)) ||
+                              (currentSubTaskCategory === TaskResetCategory.SPECIFIC_DAY && currentSubTaskSpecificDays.length === 0)
+                          }
+                      >
+                          <PlusCircleIcon className="w-5 h-5 mr-1"/> <span>Add</span>
+                      </button>
+                    </div>
+                </div>
+              )}
+              {(taskData.sub_tasks || []).length === 0 && editingSubTask === null && (
+                  <p className="text-sm text-base-content-secondary mt-3 text-center py-4">No sub-tasks yet.</p>
+              )}
+          </div>
+        </div>
+        
+        <div className="flex-shrink-0 flex justify-end space-x-3 pt-5 border-t border-base-300/50 pl-1 pr-4">
           <button type="button" onClick={onClose} className="px-5 py-2.5 border border-base-300 rounded-lg text-sm font-medium hover:bg-base-300 focus:outline-none transition-colors">Cancel</button>
           <button 
             type="submit" 
