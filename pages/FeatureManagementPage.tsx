@@ -172,7 +172,7 @@ export const FeatureManagementPage: React.FC<FeatureManagementPageProps> = ({
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         {/* Left column for controls */}
         <aside className="md:col-span-1 md:sticky md:top-6 self-start">
-            <div className="space-y-6 max-h-[calc(100vh-48px)] overflow-y-auto pr-2">
+            <div className="space-y-6 max-h-[calc(100vh-48px)] overflow-y-auto scrollbar-hide">
                 <FilterControlsFM
                     filters={filters}
                     onFilterChange={handleFilterChange}
